@@ -15,7 +15,7 @@ jobs:
         pip install black
     - name: Formatting the code with black
       run: |
-        black $(git ls-files 'Lambdas/')
+        black $(git ls-files 'lambdas/')
 
   run-pylint:
     needs: format-black
