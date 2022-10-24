@@ -1,0 +1,16 @@
+directory:
+  - terraform
+skip-check:
+  - CKV_AWS_145
+  - CKV_AWS_50
+  - CKV_AWS_115
+  - CKV_AWS_116
+  - CKV_AWS_117
+  - CKV_AWS_68
+  - CKV_AWS_86
+  - CKV_AWS_76
+  - CKV_AWS_272
+  - CKV_AWS_18
+  - CKV_AWS_19
+  - CKV2_AWS_32
+  - CKV_AWS_173
