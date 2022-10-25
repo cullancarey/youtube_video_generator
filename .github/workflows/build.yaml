@@ -5,6 +5,7 @@ on:
     branches:
       - main
 
+jobs:
   upload-artifacts:
     needs: [build-tweet-lambda-package, build-youtube-lambda-package]
     runs-on: ubuntu-latest
