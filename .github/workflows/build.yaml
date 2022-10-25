@@ -1,0 +1,34 @@
+name: 'Build'
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-tweet-lambda-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: ./create_tweet_lambda_package.sh
+      shell: bash
+
+  build-youtube-lambda-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: ./create_youtube_lambda_package.sh
+      shell: bash
+
+  upload-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/upload-artifact@v3
+      with:
+        name: lambda-builds
+        path: |
+         ./tweet_youtube_video.zip
+         ./youtube_video_generator.zip

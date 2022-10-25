@@ -32,8 +32,8 @@ mv package/youtube_video_generator.zip .
 echo "Removing package directory"
 rm -rf package/
 
-echo "Uploading zip file to S3..."
-aws s3 cp youtube_video_generator.zip s3://youtube-uploader-bucket/
+# echo "Uploading zip file to S3..."
+# aws s3 cp youtube_video_generator.zip s3://youtube-uploader-bucket/
 
 # echo "Updating lambda function...!"
 # aws lambda update-function-code \

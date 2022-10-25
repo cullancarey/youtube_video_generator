@@ -6,10 +6,10 @@ echo "Making package directory"
 mkdir package
 
 echo "Copying python script to package directory"
-cp ../lambdas/tweet_video.py package/
+cp ./lambdas/tweet_video.py package/
 
 echo "Installing requirements"
-pip install --target ./package/ -r ../tweet_lambda_requirements.txt
+pip install --target ./package/ -r ./tweet_lambda_requirements.txt
 
 echo "Moving to package directory"
 cd package
@@ -26,8 +26,8 @@ mv package/tweet_youtube_video.zip .
 echo "Removing package directory"
 rm -rf package/
 
-echo "Uploading zip file to S3..."
-aws s3 cp tweet_youtube_video.zip s3://youtube-uploader-bucket/
+# echo "Uploading zip file to S3..."
+# aws s3 cp tweet_youtube_video.zip s3://youtube-uploader-bucket/
 
 # echo "Updating lambda function...!"
 # aws lambda update-function-code \
