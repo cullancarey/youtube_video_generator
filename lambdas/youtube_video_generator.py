@@ -45,7 +45,7 @@ def get_param(param):
 
 
 def file_setup():
-    '''Downloads files from S3 and moves them to lambda tmp/ directory'''
+    """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
     keys = ["main.py-oauth2.json", "story.txt", "story.mp3", "output.mp4"]
