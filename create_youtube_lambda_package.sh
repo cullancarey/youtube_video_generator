@@ -21,14 +21,14 @@ echo "Moving to package directory"
 cd package
 
 echo "Zipping contents into deployment package"
-zip -r youtube_video_generator.zip .
+zip -rq youtube_video_generator.zip .
 
 echo "Moving back to main directory"
 cd ..
 
 echo "Moving deployment package to main directory"
 mv package/youtube_video_generator.zip .
-ECHO $PWD
+echo $PWD
 
 echo "Removing package directory"
 rm -rf package/
