@@ -13,7 +13,7 @@ resource "null_resource" "create_tweet_youtube_video_lambda_package" {
 resource "aws_s3_object" "tweet_youtube_video_lambda_file" {
   bucket = "youtube-uploader-bucket"
   key    = "${local.tweet_video_lambda}_lambda"
-  source = "../${local.tweet_video_lambda}.zip"
+  source = "${local.tweet_video_lambda}.zip"
 
 }
 
