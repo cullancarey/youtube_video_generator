@@ -13,6 +13,7 @@ import httplib2
 import tweepy
 from datetime import datetime
 import boto3
+
 # import shutil
 from dateutil.tz import gettz
 
@@ -75,7 +76,7 @@ def get_param(param):
 
 
 def file_setup():
-    '''Downloads files from S3 and moves them to lambda tmp/ directory'''
+    """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
     key = "tweet_video.py-oauth2.json"
