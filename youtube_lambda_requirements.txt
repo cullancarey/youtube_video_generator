@@ -23,4 +23,5 @@ six==1.16.0
 update-checker==0.18.0
 uritemplate==4.1.1
 urllib3==1.26.12
-websocket-client==1.4.1
+websocket-client==1.4.
+oauth2client==4.1.3
