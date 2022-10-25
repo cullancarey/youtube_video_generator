@@ -6,16 +6,16 @@ echo "Making package directory"
 mkdir package
 
 echo "Copying main script to package directory"
-cp ../lambdas/main.py package/
+cp ./lambdas/main.py package/
 
 echo "Copying upload script to package directory"
-cp ../lambdas/upload_video.py package/
+cp ./lambdas/upload_video.py package/
 
 echo "Copying ffmpeg to package directory"
-cp ../ffmpeg package/
+cp ./ffmpeg package/
 
 echo "Installing requirements"
-pip install --target ./package/ -r ../youtube_lambda_requirements.txt
+pip install --target ./package/ -r ./youtube_lambda_requirements.txt
 
 echo "Moving to package directory"
 cd package
