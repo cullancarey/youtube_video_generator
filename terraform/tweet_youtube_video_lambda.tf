@@ -5,7 +5,7 @@
 
 resource "null_resource" "create_tweet_youtube_video_lambda_package" {
   provisioner "local-exec" {
-    command = "../create_tweet_youtube_video_lambda_package.sh"
+    command = "../create_tweet_lambda_package.sh"
   }
 }
 
