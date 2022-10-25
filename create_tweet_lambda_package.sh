@@ -15,14 +15,14 @@ echo "Moving to package directory"
 cd package
 
 echo "Zipping contents into deployment package"
-zip -r tweet_youtube_video.zip .
+zip -rq tweet_youtube_video.zip .
 
 echo "Moving back to main directory"
 cd ..
 
 echo "Moving deployment package to main directory"
 mv package/tweet_youtube_video.zip .
-ECHO $PWD
+echo $PWD
 
 echo "Removing package directory"
 rm -rf package/
