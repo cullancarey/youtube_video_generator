@@ -54,4 +54,4 @@ jobs:
       # On push to "main", build or change infrastructure according to Terraform configuration files
     - name: Terraform Apply
       id: apply
-      run: terraform apply --auto-approve -input=false -var-file="$GITHUB_REF_NAME.tfvars"
+      run: terraform apply --auto-approve -input=false
