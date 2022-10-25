@@ -28,6 +28,7 @@ cd ..
 
 echo "Moving deployment package to main directory"
 mv package/youtube_video_generator.zip .
+ECHO $PWD
 
 echo "Removing package directory"
 rm -rf package/
