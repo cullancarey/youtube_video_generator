@@ -3,19 +3,18 @@
 #############################################
 
 
-resource "null_resource" "create_tweet_youtube_video_lambda_package" {
-  provisioner "local-exec" {
-    command = "../create_tweet_lambda_package.sh"
-  }
-}
+# resource "null_resource" "create_tweet_youtube_video_lambda_package" {
+#   provisioner "local-exec" {
+#     command = "../create_tweet_lambda_package.sh"
+#   }
+# }
 
 
 resource "aws_s3_object" "tweet_youtube_video_lambda_file" {
-  bucket     = "youtube-uploader-bucket"
-  key        = "${local.tweet_video_lambda}_lambda"
-  source     = "${local.tweet_video_lambda}.zip"
-  depends_on = [null_resource.create_tweet_youtube_video_lambda_package]
-
+  bucket      = "youtube-uploader-bucket"
+  key         = "${local.tweet_video_lambda}_lambda"
+  source      = "${local.tweet_video_lambda}.zip"
+  source_hash = filemd5("${local.tweet_video_lambda}.zip")
 }
 
 resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda_lambda" {
