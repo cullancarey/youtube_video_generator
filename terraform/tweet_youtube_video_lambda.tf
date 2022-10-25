@@ -12,7 +12,7 @@
 
 resource "aws_s3_object" "tweet_youtube_video_lambda_file" {
   bucket      = "youtube-uploader-bucket"
-  key         = "${local.tweet_video_lambda}_lambda"
+  key         = local.tweet_video_lambda
   source      = "tweet_lambda_build/${local.tweet_video_lambda}.zip"
   source_hash = filemd5("tweet_lambda_build/${local.tweet_video_lambda}.zip")
 }
