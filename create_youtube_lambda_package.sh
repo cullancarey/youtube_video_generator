@@ -6,7 +6,7 @@ echo "Making package directory"
 mkdir package
 
 echo "Copying main script to package directory"
-cp ./lambdas/main.py package/
+cp ./lambdas/youtube_video_generator.py package/
 
 echo "Copying upload script to package directory"
 cp ./lambdas/upload_video.py package/
