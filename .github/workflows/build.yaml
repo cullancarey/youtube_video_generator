@@ -12,13 +12,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
-      run: ./create_youtube_lambda_package.sh
       shell: bash
-
-    - uses: actions/checkout@v3
-    - name: Install dependencies
-      run: ./create_tweet_lambda_package.sh
-      shell: bash
+      run: |
+      ./create_youtube_lambda_package.sh
+      ./create_tweet_lambda_package.sh
 
     - uses: actions/upload-artifact@v3
     - name: Upload Build Packages
