@@ -22,6 +22,7 @@ cd ..
 
 echo "Moving deployment package to main directory"
 mv package/tweet_youtube_video.zip .
+ECHO $PWD
 
 echo "Removing package directory"
 rm -rf package/
