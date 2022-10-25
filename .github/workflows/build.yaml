@@ -6,21 +6,28 @@ on:
       - main
 
 jobs:
-  upload-artifacts:
-    needs: [build-tweet-lambda-package, build-youtube-lambda-package]
+  build-tweet-lambda-package:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
+      run: ./create_tweet_lambda_package.sh
       shell: bash
-      run: |
-      ./create_youtube_lambda_package.sh
-      ./create_tweet_lambda_package.sh
+    - name: Upload Tweet Lambda Build Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: tweet_lambda_build
+          path: tweet_youtube_video.zip
 
-    - uses: actions/upload-artifact@v3
-    - name: Upload Build Packages
-      with:
-        name: lambda-builds
-        path: |
-         ../tweet_youtube_video.zip
-         ../youtube_video_generator.zip
+  build-youtube-lambda-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: ./create_youtube_lambda_package.sh
+      shell: bash
+    - name: Upload Youtube Lambda Build Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: youtube_lambda_build
+          path: youtube_video_generator.zip
