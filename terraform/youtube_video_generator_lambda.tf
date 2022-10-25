@@ -13,8 +13,8 @@
 resource "aws_s3_object" "youtube_lambda_file" {
   bucket      = "youtube-uploader-bucket"
   key         = "${local.youtube_lambda}_lambda"
-  source      = "${local.youtube_lambda}.zip"
-  source_hash = filemd5("${local.youtube_lambda}.zip")
+  source      = "youtube_lambda_build/${local.youtube_lambda}.zip"
+  source_hash = filemd5("youtube_lambda_build/${local.youtube_lambda}.zip")
 
 }
 
