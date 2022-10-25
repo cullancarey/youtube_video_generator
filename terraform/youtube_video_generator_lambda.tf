@@ -11,9 +11,10 @@ resource "null_resource" "create_youtube_video_generator_package" {
 
 
 resource "aws_s3_object" "youtube_lambda_file" {
-  bucket = "youtube-uploader-bucket"
-  key    = "${local.youtube_lambda}_lambda"
-  source = "${local.youtube_lambda}.zip"
+  bucket     = "youtube-uploader-bucket"
+  key        = "${local.youtube_lambda}_lambda"
+  source     = "${local.youtube_lambda}.zip"
+  depends_on = null_resource.create_youtube_video_generator_package
 
 }
 
