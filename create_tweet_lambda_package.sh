@@ -6,7 +6,7 @@ echo "Making package directory"
 mkdir package
 
 echo "Copying python script to package directory"
-cp ./lambdas/tweet_video.py package/
+cp ./lambdas/tweet_youtube_video.py package/
 
 echo "Installing requirements"
 pip install --target ./package/ -r ./tweet_lambda_requirements.txt
