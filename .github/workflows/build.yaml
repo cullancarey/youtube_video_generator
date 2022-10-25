@@ -31,5 +31,5 @@ jobs:
       with:
         name: lambda-builds
         path: |
-         tweet_youtube_video.zip
-         youtube_video_generator.zip
+         ../tweet_youtube_video.zip
+         ../youtube_video_generator.zip
