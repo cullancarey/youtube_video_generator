@@ -14,10 +14,10 @@ jobs:
       run: ./create_tweet_lambda_package.sh
       shell: bash
     - name: Upload Tweet Lambda Build Package
-    - uses: actions/upload-artifact@v3
-        with:
-          name: tweet_lambda_build
-          path: tweet_youtube_video.zip
+      uses: actions/upload-artifact@v3
+      with:
+        name: tweet_lambda_build
+        path: tweet_youtube_video.zip
 
   build-youtube-lambda-package:
     runs-on: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
       run: ./create_youtube_lambda_package.sh
       shell: bash
     - name: Upload Youtube Lambda Build Package
-    - uses: actions/upload-artifact@v3
-        with:
-          name: youtube_lambda_build
-          path: youtube_video_generator.zip
+      uses: actions/upload-artifact@v3
+      with:
+        name: youtube_lambda_build
+        path: youtube_video_generator.zip
