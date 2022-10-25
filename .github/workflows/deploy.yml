@@ -1,12 +1,37 @@
 name: 'Deploy'
 
 on:
-  workflow_run:
-    workflows: [Build]
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 jobs:
+  build-tweet-lambda-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: ./create_tweet_lambda_package.sh
+      shell: bash
+    - name: Upload Tweet Lambda Build Package
+      uses: actions/upload-artifact@v3
+      with:
+        name: tweet_lambda_build
+        path: tweet_youtube_video.zip
+
+  build-youtube-lambda-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: ./create_youtube_lambda_package.sh
+      shell: bash
+    - name: Upload Youtube Lambda Build Package
+      uses: actions/upload-artifact@v3
+      with:
+        name: youtube_lambda_build
+        path: youtube_video_generator.zip
+
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
@@ -21,6 +46,9 @@ jobs:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
       uses: actions/checkout@v2
+
+    - name: Download all workflow run artifacts
+      uses: actions/download-artifact@v3
 
     # Configure AWS Creds PROD
     - name: Configure AWS Credentials Prod
