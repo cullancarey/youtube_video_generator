@@ -18,7 +18,7 @@ import boto3
 from dateutil.tz import gettz
 
 # shutil.copy(
-#     f"{os.getcwd()}/tmp/tweet_video.py-oauth2.json", "/tmp/tweet_video.py-oauth2.json"
+#     f"{os.getcwd()}/tmp/tweet_youtube_video.py-oauth2.json", "/tmp/tweet_youtube_video.py-oauth2.json"
 # )
 
 
@@ -52,7 +52,7 @@ def get_authenticated_service():
         message=missing_client_secrets_message,
     )
 
-    storage = Storage("/tmp/tweet_video.py-oauth2.json")
+    storage = Storage("/tmp/tweet_youtube_video.py-oauth2.json")
     credentials = storage.get()
     print(credentials)
 
@@ -79,7 +79,7 @@ def file_setup():
     """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
-    key = "tweet_video.py-oauth2.json"
+    key = "tweet_youtube_video.py-oauth2.json"
     try:
         local_file_name = f"/tmp/{key}"
         s3_client.Bucket(bucket_name).download_file(key, local_file_name)
