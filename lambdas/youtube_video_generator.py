@@ -53,7 +53,7 @@ def file_setup():
         "story.txt",
         "story.mp3",
         "output.mp4",
-        "client_secrets.json",
+        "client_secrets.json"
     ]
     for key in keys:
         try:
