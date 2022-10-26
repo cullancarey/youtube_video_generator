@@ -48,7 +48,7 @@ def file_setup():
     """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
-    keys = ["main.py-oauth2.json", "story.txt", "story.mp3", "output.mp4"]
+    keys = ["youtube_video_generator.py-oauth2.json", "story.txt", "story.mp3", "output.mp4"]
     for key in keys:
         try:
             local_file_name = f"/tmp/{key}"
@@ -56,7 +56,7 @@ def file_setup():
         except Exception as err:
             print(f"Error ocurred while downloading files from S3: {err}")
 
-    # shutil.copy(f"{os.getcwd()}/main.py-oauth2.json", "/tmp/main.py-oauth2.json")
+    # shutil.copy(f"{os.getcwd()}/youtube_video_generator.py-oauth2.json", "/tmp/youtube_video_generator.py-oauth2.json")
     # shutil.copy(f"{os.getcwd()}/story.txt", "/tmp/story.txt")
     # shutil.copy(f"{os.getcwd()}/story.mp3", "/tmp/story.mp3")
     # shutil.copy(f"{os.getcwd()}/output.mp4", "/tmp/output.mp4")
