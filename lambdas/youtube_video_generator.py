@@ -53,6 +53,7 @@ def file_setup():
         "story.txt",
         "story.mp3",
         "output.mp4",
+        "client_secrets.json"
     ]
     for key in keys:
         try:
@@ -194,4 +195,5 @@ def lambda_handler(event, context):
     os.remove("/tmp/story.txt")
     os.remove("/tmp/story.mp3")
     os.remove("/tmp/output.mp4")
+    os.remove("/tmp/client_secrets.json")
     print("Done deleting files")
