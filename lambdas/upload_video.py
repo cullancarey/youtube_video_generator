@@ -24,7 +24,7 @@ class UploadVideo:
         # Explicitly tell the underlying HTTP transport library not to retry, since
         # we are handling retry logic ourselves.
         httplib2.RETRIES = 1
-        client_secrets_file = f"{os.getcwd()}/client_secrets.json"
+        client_secrets_file = "/tmp/client_secrets.json"
         youtube_upload_scope = "https://www.googleapis.com/auth/youtube.upload"
         youtube_api_service_name = "youtube"
         youtube_api_version = "v3"
