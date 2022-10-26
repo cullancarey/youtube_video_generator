@@ -63,10 +63,6 @@ def file_setup():
             print(f"Error ocurred while downloading files from S3: {err}")
         print(f"File copied from S3 to lambda: {local_file_name}")
 
-    # shutil.copy(f"{os.getcwd()}/youtube_video_generator.py-oauth2.json", "/tmp/youtube_video_generator.py-oauth2.json")
-    # shutil.copy(f"{os.getcwd()}/story.txt", "/tmp/story.txt")
-    # shutil.copy(f"{os.getcwd()}/story.mp3", "/tmp/story.mp3")
-    # shutil.copy(f"{os.getcwd()}/output.mp4", "/tmp/output.mp4")
     os.mkdir("/tmp/images")
 
     print("Done setting up files...")
