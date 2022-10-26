@@ -14,3 +14,4 @@ skip-check:
   - CKV_AWS_19
   - CKV2_AWS_32
   - CKV_AWS_173
+  - CKV_AWS_144

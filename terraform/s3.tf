@@ -4,7 +4,7 @@
 
 
 resource "aws_s3_bucket" "youtube_uploader_bucket" {
-  bucket              = "youtube-uploader-bucket"
+  bucket = "youtube-uploader-bucket"
   tags = {
     "Name" = "youtube-uploader-bucket"
   }
@@ -32,4 +32,37 @@ resource "aws_s3_bucket_policy" "allow_access_from_lambda_user" {
     ]
 }
 POLICY
+}
+
+
+
+resource "aws_s3_bucket_public_access_block" "youtube_uploader_bucket_access_block" {
+  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+  ignore_public_acls      = true
+}
+
+resource "aws_s3_bucket_versioning" "youtube_uploader_bucket_versioning" {
+  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+
+resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecycle_config" {
+  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+
+  rule {
+    id = "ExpireAllAfter2Month"
+
+    expiration {
+      days = 60
+    }
+
+    status = "Enabled"
+  }
 }
