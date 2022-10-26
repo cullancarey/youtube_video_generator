@@ -27,7 +27,7 @@ resource "aws_s3_bucket_policy" "allow_access_from_lambda_user" {
                 "s3:GetObject",
                 "s3:ListBucket"
             ],
-            "Resource": "arn:aws:s3:::youtube-uploader-bucket/*"
+            "Resource": ["arn:aws:s3:::youtube-uploader-bucket/*", "arn:aws:s3:::youtube-uploader-bucket"]
         }
     ]
 }
