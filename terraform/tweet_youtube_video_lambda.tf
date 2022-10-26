@@ -84,7 +84,7 @@ resource "aws_iam_policy" "tweet_youtube_video_lambda_lambda_iam_policy" {
         {
             "Sid": "AllowS3",
             "Effect": "Allow",
-            "Action": "s3:GetObject",
+            "Action": ["s3:GetObject", "s3:ListBucket"],
             "Resource": "arn:aws:s3:::youtube-uploader-bucket/*"
         }
     ]

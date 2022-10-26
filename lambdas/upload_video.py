@@ -50,7 +50,7 @@ class UploadVideo:
             message=missing_client_secrets_message,
         )
 
-        storage = Storage("/tmp/main.py-oauth2.json")
+        storage = Storage("/tmp/youtube_video_generator.py-oauth2.json")
         credentials = storage.get()
 
         if credentials is None or credentials.invalid:
