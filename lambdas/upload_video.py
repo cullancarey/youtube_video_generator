@@ -156,6 +156,7 @@ class UploadVideo:
 
     def execute(self, file, title, description, category, keywords, privacy_status):
         """Function to upload video to youtube"""
+        print("Inside the execute function of upload_video.py")
         valid_privacy_statuses = ("public", "private", "unlisted")
         argparser.add_argument("--file", default=file, help=f"{file}")
         argparser.add_argument("--title", help=f"{title}", default=f"{title}")
@@ -176,7 +177,7 @@ class UploadVideo:
             help=f"{privacy_status}",
         )
         args = argparser.parse_args()
-        print(args)
+        print(f"Arguments for video upload: {args}")
 
         if not os.path.exists(args.file):
             sys.exit("Please specify a valid file using the --file= parameter.")

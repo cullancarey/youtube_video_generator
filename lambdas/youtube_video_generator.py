@@ -48,19 +48,27 @@ def file_setup():
     """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
-    keys = ["youtube_video_generator.py-oauth2.json", "story.txt", "story.mp3", "output.mp4"]
+    keys = [
+        "youtube_video_generator.py-oauth2.json",
+        "story.txt",
+        "story.mp3",
+        "output.mp4",
+    ]
     for key in keys:
         try:
             local_file_name = f"/tmp/{key}"
             s3_client.Bucket(bucket_name).download_file(key, local_file_name)
         except Exception as err:
             print(f"Error ocurred while downloading files from S3: {err}")
+        print(f"File copied from S3 to lambda: {local_file_name}")
 
     # shutil.copy(f"{os.getcwd()}/youtube_video_generator.py-oauth2.json", "/tmp/youtube_video_generator.py-oauth2.json")
     # shutil.copy(f"{os.getcwd()}/story.txt", "/tmp/story.txt")
     # shutil.copy(f"{os.getcwd()}/story.mp3", "/tmp/story.mp3")
     # shutil.copy(f"{os.getcwd()}/output.mp4", "/tmp/output.mp4")
     os.mkdir("/tmp/images")
+
+    print("Done setting up files...")
 
 
 def lambda_handler(event, context):
@@ -75,17 +83,21 @@ def lambda_handler(event, context):
     password_param = get_param("reddit_password")
 
     # Sets Reddit session
-    reddit = praw.Reddit(
-        client_id=client_id_param,
-        client_secret=client_secret_param,
-        user_agent=user_agent_param,
-        username=username_param,
-        password=password_param,
-    )
+    try:
+        reddit = praw.Reddit(
+            client_id=client_id_param,
+            client_secret=client_secret_param,
+            user_agent=user_agent_param,
+            username=username_param,
+            password=password_param,
+        )
+    except Exception as err:
+        print(f"Exception establishing reddit session: {err}")
+    print(f"Establised reddit session: {reddit}")
 
     # Grabs newest submission from r/quotes.
     # Also grabs author and url for credit
-    with open("/tmp/story.txt", "w", encoding="utf-8") as story_file:
+    with open("/tmp/story.txt", "w+", encoding="utf-8") as story_file:
         for submission in reddit.subreddit("quotes").new(limit=1):
             if not submission.over_18:
                 story_file.write(submission.title)
@@ -98,6 +110,7 @@ def lambda_handler(event, context):
     # Cretes mp3 file from text file
     with open("/tmp/story.txt", "r", encoding="utf-8") as story:
         text_file = story.read()
+        print(f"Story file contents: {text_file}")
         tts = gTTS(text_file)
         tts.save("/tmp/story.mp3")
         audio_file_path = "/tmp/story.mp3"
@@ -148,6 +161,7 @@ def lambda_handler(event, context):
     command_line = f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{str(frame_rate)} -pix_fmt yuvj420p  -pattern_type glob -i {str(images_path)} -i {str(audio_file_path)} -c:v libx264 -vf scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2 -c:a aac -shortest {str(video_file_path)}"
 
     args = shlex.split(command_line)
+    print(f"Running ffmpeg to create video file with argument: {args}")
     subprocess.call(args)
 
     titles = [
