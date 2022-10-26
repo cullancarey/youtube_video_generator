@@ -25,7 +25,7 @@ from dateutil.tz import gettz
 def get_authenticated_service():
     """Function used to authenticate to the third party platform"""
     httplib2.RETRIES = 1
-    client_secrets_file = f"{os.getcwd()}/client_secrets.json"
+    client_secrets_file = "/tmp/client_secrets.json"
     youtube_upload_scope = "https://www.googleapis.com/auth/youtube.readonly"
     youtube_api_service_name = "youtube"
     youtube_api_version = "v3"
@@ -79,12 +79,14 @@ def file_setup():
     """Downloads files from S3 and moves them to lambda tmp/ directory"""
     s3_client = boto3.resource("s3")
     bucket_name = "youtube-uploader-bucket"
-    key = "tweet_youtube_video.py-oauth2.json"
-    try:
-        local_file_name = f"/tmp/{key}"
-        s3_client.Bucket(bucket_name).download_file(key, local_file_name)
-    except Exception as err:
-        print(f"Error ocurred while downloading files from S3: {err}")
+    keys = ["tweet_youtube_video.py-oauth2.json", "client_secrets.json"]
+    for key in keys:
+        try:
+            local_file_name = f"/tmp/{key}"
+            s3_client.Bucket(bucket_name).download_file(key, local_file_name)
+        except Exception as err:
+            print(f"Error ocurred while downloading files from S3: {err}")
+        print(f"File copied from S3 to lambda: {local_file_name}")
 
 
 def lambda_handler(event, context):
