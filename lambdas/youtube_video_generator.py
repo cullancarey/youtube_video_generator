@@ -20,7 +20,7 @@ def get_image_urls(query):
     headers = {}
     data = {}
 
-    response = requests.get(url, headers=headers, data=data, timeout=15)
+    response = requests.get(url, headers=headers, data=data, timeout=60)
 
     return response.text
 
@@ -32,7 +32,7 @@ def download_image(urls):
     headers = {}
     data = {}
 
-    response = requests.get(url, headers=headers, data=data, timeout=15)
+    response = requests.get(url, headers=headers, data=data, timeout=60)
 
     return response.content
 
