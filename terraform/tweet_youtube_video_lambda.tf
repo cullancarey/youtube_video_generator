@@ -49,7 +49,7 @@ resource "aws_lambda_function" "tweet_youtube_video_lambda_lambda" {
   source_code_hash = aws_s3_object.tweet_youtube_video_lambda_file.id
 
   runtime = "python3.9"
-  timeout = 300
+  timeout = 120
 }
 
 resource "aws_iam_policy" "tweet_youtube_video_lambda_lambda_iam_policy" {

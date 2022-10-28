@@ -49,8 +49,9 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
 
   source_code_hash = aws_s3_object.youtube_lambda_file.id
 
-  runtime = "python3.9"
-  timeout = 300
+  runtime     = "python3.9"
+  timeout     = 120
+  memory_size = 512
 }
 
 resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {

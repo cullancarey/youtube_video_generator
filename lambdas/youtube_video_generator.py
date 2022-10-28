@@ -187,7 +187,6 @@ def lambda_handler(event, context):
 
     # Clean up files
     shutil.rmtree("/tmp/images/")
-    os.mkdir(images_dir)
     os.remove("/tmp/story.txt")
     os.remove("/tmp/story.mp3")
     os.remove("/tmp/output.mp4")
