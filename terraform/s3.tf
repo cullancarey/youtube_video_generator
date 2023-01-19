@@ -53,16 +53,16 @@ resource "aws_s3_bucket_versioning" "youtube_uploader_bucket_versioning" {
 }
 
 
-resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecycle_config" {
-  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+# resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecycle_config" {
+#   bucket = aws_s3_bucket.youtube_uploader_bucket.id
 
-  rule {
-    id = "ExpireAllAfter2Month"
+#   rule {
+#     id = "ExpireAllAfter2Month"
 
-    expiration {
-      days = 60
-    }
+#     expiration {
+#       days = 60
+#     }
 
-    status = "Enabled"
-  }
-}
+#     status = "Enabled"
+#   }
+# }
