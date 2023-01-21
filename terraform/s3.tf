@@ -59,7 +59,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecy
   rule {
     id = "ExpireAllAfter2Month"
 
-    expiration {
+    noncurrent_version_expiration {
       days = 60
     }
 
