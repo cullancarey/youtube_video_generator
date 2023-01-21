@@ -60,7 +60,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecy
     id = "ExpireAllAfter2Month"
 
     noncurrent_version_expiration {
-      days = 60
+      noncurrent_days = 60
     }
 
     status = "Enabled"
