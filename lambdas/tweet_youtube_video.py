@@ -13,6 +13,7 @@ import httplib2
 import tweepy
 from datetime import datetime
 import boto3
+import logging
 
 # import shutil
 from dateutil.tz import gettz
@@ -20,6 +21,10 @@ from dateutil.tz import gettz
 # shutil.copy(
 #     f"{os.getcwd()}/tmp/tweet_youtube_video.py-oauth2.json", "/tmp/tweet_youtube_video.py-oauth2.json"
 # )
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def get_authenticated_service():
@@ -54,7 +59,7 @@ def get_authenticated_service():
 
     storage = Storage("/tmp/tweet_youtube_video.py-oauth2.json")
     credentials = storage.get()
-    print(credentials)
+    logger.info(credentials)
 
     if credentials is None or credentials.invalid:
         credentials = run_flow(
@@ -85,8 +90,8 @@ def file_setup():
             local_file_name = f"/tmp/{key}"
             s3_client.Bucket(bucket_name).download_file(key, local_file_name)
         except Exception as err:
-            print(f"Error ocurred while downloading files from S3: {err}")
-        print(f"File copied from S3 to lambda: {local_file_name}")
+            logger.info(f"Error ocurred while downloading files from S3: {err}")
+        logger.info(f"File copied from S3 to lambda: {local_file_name}")
 
 
 def lambda_handler(event, context):
@@ -122,7 +127,7 @@ def lambda_handler(event, context):
 
     now = datetime.now(gettz("US/Central"))
 
-    print(
+    logger.info(
         f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
     )
     twitter_client.create_tweet(
