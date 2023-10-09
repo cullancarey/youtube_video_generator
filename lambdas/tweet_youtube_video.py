@@ -104,15 +104,13 @@ def lambda_handler(event, context):
     access_token_secret = get_param("twitter_access_token_secret")
     client_secret = get_param("twitter_api_key_secret")
 
-    # Authenticate to Twitter
-    auth = tweepy.OAuthHandler(client_id, client_secret)
-    auth.set_access_token(access_token, access_token_secret)
-
-    print(auth)
-
     # Create API object
-    twitter_client = tweepy.API(auth)
-    print(twitter_client)
+    twitter_client = tweepy.Client(
+        consumer_key=client_id,
+        consumer_secret=client_secret,
+        access_token=access_token,
+        access_token_secret=access_token_secret,
+    )
 
     request = youtube.search().list(
         forMine=True, type="video", part="snippet", maxResults=1
@@ -127,6 +125,6 @@ def lambda_handler(event, context):
     print(
         f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
     )
-    twitter_client.update_status(
-        f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
+    twitter_client.create_tweet(
+        text=f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
     )
