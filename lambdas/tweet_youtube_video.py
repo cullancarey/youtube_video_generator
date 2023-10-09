@@ -18,6 +18,7 @@ import logging
 # import shutil
 from dateutil.tz import gettz
 
+
 # shutil.copy(
 #     f"{os.getcwd()}/tmp/tweet_youtube_video.py-oauth2.json", "/tmp/tweet_youtube_video.py-oauth2.json"
 # )
@@ -29,54 +30,66 @@ logger.setLevel(logging.INFO)
 
 def get_authenticated_service():
     """Function used to authenticate to the third party platform"""
-    httplib2.RETRIES = 1
-    client_secrets_file = "/tmp/client_secrets.json"
-    youtube_upload_scope = "https://www.googleapis.com/auth/youtube.readonly"
-    youtube_api_service_name = "youtube"
-    youtube_api_version = "v3"
-    missing_client_secrets_message = f"""
-    WARNING: Please configure OAuth 2.0
+    try:
+        httplib2.RETRIES = 1
+        client_secrets_file = "/tmp/client_secrets.json"
+        youtube_upload_scope = "https://www.googleapis.com/auth/youtube.readonly"
+        youtube_api_service_name = "youtube"
+        youtube_api_version = "v3"
+        missing_client_secrets_message = f"""
+        WARNING: Please configure OAuth 2.0
 
-    To make this sample run you will need to populate the client_secrets.json file
-    found at:
+        To make this sample run you will need to populate the client_secrets.json file
+        found at:
 
-       {os.path.abspath(
-        os.path.join(os.path.dirname(__file__), client_secrets_file)
-    )}
+        {os.path.abspath(
+            os.path.join(os.path.dirname(__file__), client_secrets_file)
+        )}
 
-    with information from the API Console
-    https://console.developers.google.com/
+        with information from the API Console
+        https://console.developers.google.com/
 
-    For more information about the client_secrets.json file format, please visit:
-    https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
-    """
+        For more information about the client_secrets.json file format, please visit:
+        https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
+        """
 
-    flow = flow_from_clientsecrets(
-        client_secrets_file,
-        scope=youtube_upload_scope,
-        message=missing_client_secrets_message,
-    )
-
-    storage = Storage("/tmp/tweet_youtube_video.py-oauth2.json")
-    credentials = storage.get()
-    logger.info(credentials)
-
-    if credentials is None or credentials.invalid:
-        credentials = run_flow(
-            flow, storage, argparser.parse_args(args=["--noauth_local_webserver"])
+        flow = flow_from_clientsecrets(
+            client_secrets_file,
+            scope=youtube_upload_scope,
+            message=missing_client_secrets_message,
         )
 
-    return build(
-        youtube_api_service_name,
-        youtube_api_version,
-        http=credentials.authorize(httplib2.Http()),
-    )
+        storage = Storage("/tmp/tweet_youtube_video.py-oauth2.json")
+        credentials = storage.get()
+
+        if credentials is None or credentials.invalid:
+            logger.warning("Invalid or missing credentials. Attempting to refresh.")
+            credentials = run_flow(
+                flow, storage, argparser.parse_args(args=["--noauth_local_webserver"])
+            )
+
+        logger.info("Successfully authenticated.")
+        return build(
+            youtube_api_service_name,
+            youtube_api_version,
+            http=credentials.authorize(httplib2.Http()),
+        )
+
+    except Exception as e:
+        logger.critical(f"An error occurred in get_authenticated_service: {e}")
+        return None
 
 
-def get_param(param):
-    """Retrieves parameter from parameter store in AWS"""
+def get_param(
+    param_name: str,
+):
+    """Function to get parameter value from parameter store"""
     client = boto3.client("ssm")
-    response = client.get_parameter(Name=param, WithDecryption=True)
+    try:
+        logger.info(f"Retrieving parameter {param_name}...")
+        response = client.get_parameter(Name=param_name, WithDecryption=True)
+    except Exception as e:
+        logger.error(f"Error retrieving parameter: {param_name} with error: {e}")
     return response["Parameter"]["Value"]
 
 
@@ -96,40 +109,47 @@ def file_setup():
 
 def lambda_handler(event, context):
     """Main function for lambda to invoke"""
-    # Disable OAuthlib's HTTPS verification when running locally.
-    # *DO NOT* leave this option enabled in production.
-    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+    try:
+        # Disable OAuthlib's HTTPS verification when running locally.
+        # *DO NOT* leave this option enabled in production.
+        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-    file_setup()
+        file_setup()
+        logger.info("File setup completed.")
 
-    youtube = get_authenticated_service()
+        youtube = get_authenticated_service()
+        if youtube is None:
+            logger.error("YouTube authentication failed.")
+            return
 
-    client_id = get_param("twitter_api_key")
-    access_token = get_param("twitter_access_token")
-    access_token_secret = get_param("twitter_access_token_secret")
-    client_secret = get_param("twitter_api_key_secret")
+        client_id = get_param("twitter_api_key")
+        access_token = get_param("twitter_access_token")
+        access_token_secret = get_param("twitter_access_token_secret")
+        client_secret = get_param("twitter_api_key_secret")
 
-    # Create API object
-    twitter_client = tweepy.Client(
-        consumer_key=client_id,
-        consumer_secret=client_secret,
-        access_token=access_token,
-        access_token_secret=access_token_secret,
-    )
+        # Create API object
+        twitter_client = tweepy.Client(
+            consumer_key=client_id,
+            consumer_secret=client_secret,
+            access_token=access_token,
+            access_token_secret=access_token_secret,
+        )
 
-    request = youtube.search().list(
-        forMine=True, type="video", part="snippet", maxResults=1
-    )
-    response = request.execute()
-    video_id = response["items"][0]["id"]["videoId"]
-    channel_id = response["items"][0]["snippet"]["channelId"]
-    video_title = response["items"][0]["snippet"]["title"]
+        request = youtube.search().list(
+            forMine=True, type="video", part="snippet", maxResults=1
+        )
+        response = request.execute()
+        video_id = response["items"][0]["id"]["videoId"]
+        channel_id = response["items"][0]["snippet"]["channelId"]
+        video_title = response["items"][0]["snippet"]["title"]
 
-    now = datetime.now(gettz("US/Central"))
+        now = datetime.now(gettz("US/Central"))
 
-    logger.info(
-        f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
-    )
-    twitter_client.create_tweet(
-        text=f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#youtube #python #dailyquote'
-    )
+        tweet_text = f'Today\'s video is live! Title: "{video_title}" \nWatch here -> https://www.youtube.com/watch?v={video_id} \nPlease support the channel and subscribe! -> https://www.youtube.com/channel/{channel_id} \nDatetime: {now} \n#quotes #subscribe #quoteoftheday'
+
+        logger.info(tweet_text)
+        twitter_client.create_tweet(text=tweet_text)
+        logger.info("Tweet successfully created.")
+
+    except Exception as e:
+        logger.critical(f"An unrecoverable error occurred: {e}")
