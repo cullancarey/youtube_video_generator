@@ -116,10 +116,10 @@ def lambda_handler(event, context):
         frame_rate = audio.info.length / num_images
         video_path = "/tmp/output.mp4"
         command = (
-            f"ffmpeg -y -hide_banner -framerate 1/{frame_rate} -pix_fmt yuvj420p "
+            f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} -pix_fmt yuvj420p "
             f"-pattern_type glob -i '/tmp/images/*.jpg' -i /tmp/story.mp3 "
-            f"-c:v libx264 -crf 18 -vf scale=1920:1080:force_original_aspect_ratio=decrease,"
-            f"pad=1920:1080:(ow-iw)/2:(oh-ih)/2 -c:a aac -b:a 192k -shortest {video_path}"
+            f"-c:v libx264 -crf 18 -vf scale=1280:720:force_original_aspect_ratio=decrease,"
+            f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -c:a aac -b:a 192k -shortest {video_path}"
         )
 
         result = subprocess.run(shlex.split(command), capture_output=True)
