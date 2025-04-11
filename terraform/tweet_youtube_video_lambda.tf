@@ -9,12 +9,25 @@
 #   }
 # }
 
-
 resource "aws_s3_object" "tweet_youtube_video_lambda_file" {
   bucket      = "youtube-uploader-bucket"
   key         = "${local.tweet_video_lambda}.zip"
   source      = "tweet_lambda_build/${local.tweet_video_lambda}.zip"
   source_hash = filemd5("tweet_lambda_build/${local.tweet_video_lambda}.zip")
+}
+
+resource "aws_lambda_function" "tweet_youtube_video_lambda_lambda" {
+  s3_bucket     = local.s3_bucket_for_lambda
+  s3_key        = aws_s3_object.tweet_youtube_video_lambda_file.id
+  function_name = local.tweet_video_lambda
+  role          = aws_iam_role.iam_for_tweet_youtube_video_lambda_lambda.arn
+  handler       = "${local.tweet_video_lambda}.lambda_handler"
+  description   = "Lambda function for tweeting about the youtube video on my channel"
+
+  source_code_hash = filebase64sha256("tweet_lambda_build/${local.tweet_video_lambda}.zip")
+
+  runtime = "python3.11"
+  timeout = 120
 }
 
 resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda_lambda" {
@@ -36,20 +49,6 @@ resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda_lambda" {
 }
 
 POLICY
-}
-
-resource "aws_lambda_function" "tweet_youtube_video_lambda_lambda" {
-  s3_bucket     = local.s3_bucket_for_lambda
-  s3_key        = aws_s3_object.tweet_youtube_video_lambda_file.id
-  function_name = local.tweet_video_lambda
-  role          = aws_iam_role.iam_for_tweet_youtube_video_lambda_lambda.arn
-  handler       = "${local.tweet_video_lambda}.lambda_handler"
-  description   = "Lambda function for tweeting about the youtube video on my channel"
-
-  source_code_hash = aws_s3_object.tweet_youtube_video_lambda_file.id
-
-  runtime = "python3.9"
-  timeout = 120
 }
 
 resource "aws_iam_policy" "tweet_youtube_video_lambda_lambda_iam_policy" {
