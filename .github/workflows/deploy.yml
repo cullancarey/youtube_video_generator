@@ -13,12 +13,12 @@ jobs:
   build-tweet-lambda-package:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: ./create_tweet_lambda_package.sh
       shell: bash
     - name: Upload Tweet Lambda Build Package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tweet_lambda_build
         path: tweet_youtube_video.zip
@@ -26,12 +26,12 @@ jobs:
   build-youtube-lambda-package:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: ./create_youtube_lambda_package.sh
       shell: bash
     - name: Upload Youtube Lambda Build Package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: youtube_lambda_build
         path: youtube_video_generator.zip
@@ -51,10 +51,10 @@ jobs:
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Download all workflow run artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ./terraform
 
@@ -64,7 +64,7 @@ jobs:
 
     # Configure AWS Creds
     - name: Configure AWS Credentials 
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
         role-session-name: terraform-deployment-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
@@ -72,7 +72,7 @@ jobs:
 
     # Install the latest version of Terraform CLI
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
+      uses: hashicorp/setup-terraform@v3
 
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
