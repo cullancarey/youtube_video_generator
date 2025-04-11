@@ -91,7 +91,12 @@ jobs:
       run: terraform validate -no-color
       continue-on-error: false
 
-      # On push to "main", build or change infrastructure according to Terraform configuration files
     - name: Terraform Apply
+      if: "!contains(github.event.head_commit.message, '[tf-plan]')"
       id: apply
       run: terraform apply --auto-approve -input=false
+
+    - name: Terraform Plan
+      if: contains(github.event.head_commit.message, '[tf-plan]')
+      id: plan
+      run: terraform plan --input=false
