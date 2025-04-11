@@ -1,4 +1,5 @@
-"""Praw is used to scrape reddit"""
+"""Lambda function to scrape Reddit, generate video, and upload to YouTube"""
+
 import praw
 import os
 import subprocess
@@ -13,83 +14,53 @@ from mutagen.mp3 import MP3
 import boto3
 from upload_video import UploadVideo
 
-# Set up logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger()
+logger.setLevel("INFO")
 
 
 def get_image_urls(query):
-    """Retrieves image URLs based on text file"""
     try:
         url = f"https://www.google.be/search?q={query}&tbm=isch"
-        headers = {}
-        data = {}
-        response = requests.get(url, headers=headers, data=data, timeout=60)
-
+        response = requests.get(url, timeout=60)
         if response.status_code == 200:
-            logger.info(f"Successfully fetched image URLs for query: {query}")
+            logger.info(f"Fetched image URLs for query: {query}")
             return response.text
-        else:
-            logger.error(
-                f"Failed to fetch image URLs. HTTP Status Code: {response.status_code}"
-            )
-            return None
-
+        logger.error(f"Failed to fetch image URLs. Status: {response.status_code}")
     except requests.Timeout:
-        logger.error(f"Timeout occurred while fetching image URLs for query: {query}")
-        return None
+        logger.error(f"Timeout fetching image URLs for query: {query}")
     except Exception as e:
-        logger.error(
-            f"An error occurred while fetching image URLs for query: {query}. Error: {e}"
-        )
-        return None
+        logger.exception(f"Exception fetching image URLs for query: {query}: {e}")
+    return None
 
 
-def download_image(urls):
-    """Downloads the image content for the video file"""
+def download_image(url):
     try:
-        url = f"{urls}"
-        headers = {}
-        data = {}
-        response = requests.get(url, headers=headers, data=data, timeout=60)
-
+        response = requests.get(url, timeout=60)
         if response.status_code == 200:
-            logger.info(f"Successfully downloaded image from URL: {url}")
             return response.content
-        else:
-            logger.error(
-                f"Failed to download image. HTTP Status Code: {response.status_code}"
-            )
-            return None
-
+        logger.error(f"Failed to download image. Status: {response.status_code}")
     except requests.Timeout:
-        logger.error(f"Timeout occurred while downloading image from URL: {url}")
-        return None
+        logger.error(f"Timeout downloading image: {url}")
     except Exception as e:
-        logger.error(
-            f"An error occurred while downloading image from URL: {url}. Error: {e}"
-        )
-        return None
+        logger.exception(f"Exception downloading image: {url}: {e}")
+    return None
 
 
-def get_param(
-    param_name: str,
-):
-    """Function to get parameter value from parameter store"""
+def get_param(param_name):
     client = boto3.client("ssm")
     try:
         logger.info(f"Retrieving parameter {param_name}...")
         response = client.get_parameter(Name=param_name, WithDecryption=True)
+        return response["Parameter"]["Value"]
     except Exception as e:
-        logger.error(f"Error retrieving parameter: {param_name} with error: {e}")
-    return response["Parameter"]["Value"]
+        logger.exception(f"Error retrieving parameter {param_name}: {e}")
+        return None
 
 
 def file_setup():
-    """Downloads files from S3 and moves them to lambda tmp/ directory"""
     try:
-        s3_client = boto3.resource("s3")
-        bucket_name = "youtube-uploader-bucket"
+        s3 = boto3.resource("s3")
+        bucket = "youtube-uploader-bucket"
         keys = [
             "youtube_video_generator.py-oauth2.json",
             "story.txt",
@@ -98,114 +69,63 @@ def file_setup():
             "client_secrets.json",
         ]
         for key in keys:
-            local_file_name = f"/tmp/{key}"
-            try:
-                s3_client.Bucket(bucket_name).download_file(key, local_file_name)
-                logger.info(f"File copied from S3 to lambda: {local_file_name}")
-            except Exception as err:
-                logger.error(f"Error occurred while downloading {key} from S3: {err}")
-
-        os.mkdir("/tmp/images")
-        logger.info("Done setting up files and directories.")
-
+            s3.Bucket(bucket).download_file(key, f"/tmp/{key}")
+        os.makedirs("/tmp/images", exist_ok=True)
+        logger.info("S3 files downloaded and image directory created.")
     except Exception as e:
-        logger.critical(f"An unrecoverable error occurred in file_setup: {e}")
+        logger.critical(f"Failed in file_setup: {e}")
 
 
 def lambda_handler(event, context):
-    """Main function for lambda"""
     try:
         file_setup()
-        logger.info("File setup completed.")
 
-        client_id_param = get_param("reddit_client_id")
-        client_secret_param = get_param("reddit_client_secret")
-        user_agent_param = get_param("reddit_user_agent")
-        username_param = get_param("reddit_username")
-        password_param = get_param("reddit_password")
+        reddit = praw.Reddit(
+            client_id=get_param("reddit_client_id"),
+            client_secret=get_param("reddit_client_secret"),
+            user_agent=get_param("reddit_user_agent"),
+            username=get_param("reddit_username"),
+            password=get_param("reddit_password"),
+        )
 
-        # Sets Reddit session
-        try:
-            reddit = praw.Reddit(
-                client_id=client_id_param,
-                client_secret=client_secret_param,
-                user_agent=user_agent_param,
-                username=username_param,
-                password=password_param,
-            )
-            logger.info(f"Established Reddit session: {reddit}")
-        except Exception as err:
-            logger.error(f"Exception establishing Reddit session: {err}")
-            return
+        author = url = ""
+        with open("/tmp/story.txt", "w", encoding="utf-8") as f:
+            for post in reddit.subreddit("quotes").new(limit=1):
+                if not post.over_18:
+                    f.write(f"{post.title}\n{post.selftext}")
+                    author, url = post.author, post.url
 
-        # Grabs newest submission from r/quotes.
-        # Also grabs author and url for credit
-        with open("/tmp/story.txt", "w+", encoding="utf-8") as story_file:
-            for submission in reddit.subreddit("quotes").new(limit=1):
-                if not submission.over_18:
-                    story_file.write(submission.title)
-                    story_file.write(submission.selftext)
-                    author = submission.author
-                    url = submission.url
-
-        story_file.close()
-
-        # Cretes mp3 file from text file
-        with open("/tmp/story.txt", "r", encoding="utf-8") as story:
-            text_file = story.read()
-            print(f"Story file contents: {text_file}")
-            tts = gTTS(text_file)
+        with open("/tmp/story.txt", "r", encoding="utf-8") as f:
+            text = f.read()
+            tts = gTTS(text)
             tts.save("/tmp/story.mp3")
-            audio_file_path = "/tmp/story.mp3"
 
-        # Get length of audio and sets number of images needed
         audio = MP3("/tmp/story.mp3")
-        audio_length = audio.info.length
-        number_of_images = str(audio_length)
-        number_of_images = number_of_images.split(".")
-        number_of_images = number_of_images[0]
+        num_images = max(1, int(audio.info.length))
 
-        # Retrieves images urls
-        response = get_image_urls(f"{text_file}")
-        response = response.split('"')
-        urls = []
-        for i in response:
-            response = i.split(";s")
-            if "https://encrypted-" in i:
-                urls.append(response[0])
+        raw_html = get_image_urls(text) or get_image_urls("coding with python")
+        raw_urls = raw_html.split('"') if raw_html else []
+        urls = [u.split(";s")[0] for u in raw_urls if "https://encrypted-" in u]
 
-        if int(number_of_images) > len(urls):
-            response = get_image_urls("coding with python")
-            response = response.split('"')
-            for i in response:
-                response = i.split(";s")
-                if "https://encrypted-" in i:
-                    urls.append(response[0])
+        for idx in range(min(num_images, len(urls))):
+            image = download_image(urls[idx])
+            if image:
+                with open(f"/tmp/images/image{idx}.jpg", "wb") as f:
+                    f.write(image)
 
-        # Creates directory for images file
-        images_dir = "/tmp/images"
-        if not os.path.isdir(images_dir):
-            images_dir = os.mkdir(images_dir)
-        images_path = f"{images_dir}/*.jpg"
+        frame_rate = audio.info.length / num_images
+        video_path = "/tmp/output.mp4"
+        command = (
+            f"ffmpeg -y -hide_banner -framerate 1/{frame_rate} -pix_fmt yuvj420p "
+            f"-pattern_type glob -i '/tmp/images/*.jpg' -i /tmp/story.mp3 "
+            f"-c:v libx264 -crf 18 -vf scale=1920:1080:force_original_aspect_ratio=decrease,"
+            f"pad=1920:1080:(ow-iw)/2:(oh-ih)/2 -c:a aac -b:a 192k -shortest {video_path}"
+        )
 
-        # Downloads images based on the lenth of the audio file
-        for count, i in enumerate(range(int(number_of_images))):
-            image = download_image(urls[count])
-            with open(f"{images_dir}/image{count}.jpg", "wb") as handler:
-                handler.write(image)
-                handler.close()
-
-        # Get frame rate for video
-        frame_rate = audio_length / int(number_of_images)
-
-        video_file_path = "/tmp/output.mp4"
-
-        # Create Video File!
-        command_line = f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{str(frame_rate)} -pix_fmt yuvj420p  -pattern_type glob -i {str(images_path)} -i {str(audio_file_path)} -c:v libx264 -vf scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2 -c:a aac -shortest {str(video_file_path)}"
-
-        args = shlex.split(command_line)
-        print(f"Running ffmpeg to create video file with argument: {args}")
-        subprocess.call(args)
+        result = subprocess.run(shlex.split(command), capture_output=True)
+        if result.returncode != 0:
+            logger.error(f"ffmpeg failed: {result.stderr.decode()}")
+            raise RuntimeError("Video generation failed")
 
         titles = [
             f"Daily Quote {datetime.today().strftime('%Y-%m-%d')}",
@@ -215,30 +135,33 @@ def lambda_handler(event, context):
             "Daily Quote",
             "Quote",
         ]
-
         description = f"""Please enjoy this daily quote from u/{author}!
-        These quotes are from r/quotes on Reddit.
-        Link to post: {url}. \n
-        This video was created and uploaded via Python!"""
-        keywords = "quote", "quotes", "daily quote, python, reddit"
+These quotes are from r/quotes on Reddit.
+Link to post: {url}
+This video was created and uploaded via Python!"""
+        keywords = ["quote", "quotes", "daily quote", "python", "reddit"]
 
-        # Instanciate upload video class
-        upload = UploadVideo()
-
-        # Calls method to upload video
-        # print(video_file_path, random.choice(titles), description, 22, keywords, 'private')
-        upload.execute(
-            video_file_path, random.choice(titles), description, 22, keywords, "private"
+        uploader = UploadVideo()
+        uploader.execute(
+            video_path, random.choice(titles), description, "22", keywords, "private"
         )
-        logger.info("Video uploaded.")
 
-        # Clean up files
-        shutil.rmtree("/tmp/images/")
-        os.remove("/tmp/story.txt")
-        os.remove("/tmp/story.mp3")
-        os.remove("/tmp/output.mp4")
-        os.remove("/tmp/client_secrets.json")
-        logger.info("Done deleting files.")
+        for path in [
+            "/tmp/images",
+            "/tmp/story.txt",
+            "/tmp/story.mp3",
+            "/tmp/output.mp4",
+            "/tmp/client_secrets.json",
+        ]:
+            try:
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
+                elif os.path.isfile(path):
+                    os.remove(path)
+            except Exception as e:
+                logger.warning(f"Failed to delete {path}: {e}")
+
+        logger.info("Lambda completed successfully.")
 
     except Exception as e:
-        logger.critical(f"An unrecoverable error occurred: {e}")
+        logger.critical(f"Fatal error in lambda_handler: {e}")
