@@ -1,9 +1,13 @@
 #!/bin/bash
+set -e
+# This script creates a deployment package for the AWS Lambda function
+# that uploads videos to YouTube. It includes the necessary dependencies
+# and the main script. The package is zipped and ready for deployment.
 
 echo "Executing create_package.sh..."
 
 echo "Making package directory"
-mkdir package
+mkdir -p package
 
 echo "Copying main script to package directory"
 cp ./lambdas/youtube_video_generator.py package/
@@ -15,7 +19,7 @@ echo "Copying ffmpeg to package directory"
 cp ./ffmpeg package/
 
 echo "Installing requirements"
-pip install --target ./package/ -r ./youtube_lambda_requirements.txt
+python -m pip install --target ./package/ -r ./youtube_lambda_requirements.txt
 
 echo "Moving to package directory"
 cd package
@@ -32,12 +36,3 @@ echo $PWD
 
 echo "Removing package directory"
 rm -rf package/
-
-# echo "Uploading zip file to S3..."
-# aws s3 cp youtube_video_generator.zip s3://youtube-uploader-bucket/
-
-# echo "Updating lambda function...!"
-# aws lambda update-function-code \
-#     --function-name  youtube_video_uploader \
-#     --s3-bucket youtube-uploader-bucket \
-#     --s3-key lambda_function.zip

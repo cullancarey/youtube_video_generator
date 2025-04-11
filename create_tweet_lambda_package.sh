@@ -1,15 +1,20 @@
 #!/bin/bash
+set -e
+# This script creates a deployment package for the AWS Lambda function
+# that tweets YouTube videos. It includes the necessary dependencies
+# and the main script. The package is zipped and ready for deployment.
+# This script is specifically for the tweet_youtube_video.py script.
 
 echo "Executing create_package.sh..."
 
 echo "Making package directory"
-mkdir package
+mkdir -p package
 
 echo "Copying python script to package directory"
 cp ./lambdas/tweet_youtube_video.py package/
 
 echo "Installing requirements"
-pip install --target ./package/ -r ./tweet_lambda_requirements.txt
+python -m pip install --target ./package/ -r ./tweet_lambda_requirements.txt
 
 echo "Moving to package directory"
 cd package
@@ -26,11 +31,3 @@ echo $PWD
 
 echo "Removing package directory"
 rm -rf package/
-
-# echo "Uploading zip file to S3..."
-# aws s3 cp tweet_youtube_video.zip s3://youtube-uploader-bucket/
-
-# echo "Updating lambda function...!"
-# aws lambda update-function-code \
-#     --function-name  tweet_video \
-#     --zip-file fileb://lambda_function.zip
