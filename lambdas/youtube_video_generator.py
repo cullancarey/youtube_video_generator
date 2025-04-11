@@ -143,7 +143,7 @@ This video was created and uploaded via Python!"""
 
         uploader = UploadVideo()
         uploader.execute(
-            video_path, random.choice(titles), description, "22", keywords, "private"
+            video_path, random.choice(titles), description, "22", keywords, "public"
         )
 
         for path in [
