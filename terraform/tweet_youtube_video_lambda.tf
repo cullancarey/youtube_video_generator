@@ -9,11 +9,16 @@
 #   }
 # }
 
+data "aws_ecr_image" "tweet_lambda" {
+  repository_name = aws_ecr_repository.tweet_lambda.name
+  image_tag       = "latest"
+}
+
 resource "aws_lambda_function" "tweet_youtube_video_lambda" {
   function_name = local.tweet_video_lambda
   description   = "Lambda function for tweeting a youtube video"
   package_type  = "Image"
-  image_uri     = "${aws_ecr_repository.tweet_lambda.repository_url}:latest"
+  image_uri     = "${aws_ecr_repository.tweet_lambda.repository_url}@${data.aws_ecr_image.tweet_lambda.image_digest}"
   role          = aws_iam_role.iam_for_tweet_youtube_video_lambda.arn
   timeout       = 30
   memory_size   = 512
