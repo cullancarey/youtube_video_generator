@@ -60,7 +60,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecy
     id     = "ExpireAllAfter2Month"
     status = "Enabled"
 
-    filter {} # Required in new AWS provider versions
+    filter {
+      prefix = "" # Explicitly apply to all objects
+    }
 
     noncurrent_version_expiration {
       noncurrent_days = 60
