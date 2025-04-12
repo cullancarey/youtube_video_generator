@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO="tweet-lambda"
+REPO="tweet-lambda-repo"
 IMAGE_TAG="latest"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION="us-east-2" # or your region
