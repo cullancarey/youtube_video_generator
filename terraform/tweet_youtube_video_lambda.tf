@@ -20,7 +20,6 @@ resource "aws_lambda_function" "tweet_youtube_video_lambda" {
 }
 
 resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda" {
-  name = "${local.tweet_video_lambda}-role"
   path = "/service-role/"
 
   assume_role_policy = <<POLICY
@@ -41,7 +40,6 @@ POLICY
 }
 
 resource "aws_iam_policy" "tweet_youtube_video_lambda_iam_policy" {
-  name   = "${local.tweet_video_lambda}-role-policy"
   path   = "/service-role/"
   policy = <<POLICY
 {
