@@ -21,7 +21,6 @@ packaging==24.2
 pip-check-reqs @ git+https://github.com/r1chardj0n3s/pip-check-reqs.git@6dbbabcd6b2ce91387bd4db314725a54f0dedcc9
 pluggy==1.5.0
 praw==7.8.1
-prawcore==3.0.2
 proto-plus==1.26.1
 protobuf==6.30.2
 pyasn1==0.6.1
