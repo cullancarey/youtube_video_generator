@@ -187,3 +187,5 @@ terraform.rc
 terraform/*.json
 
 *.drawio*
+
+get-pip.py

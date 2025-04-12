@@ -12,7 +12,11 @@ from gtts import gTTS
 import requests
 from mutagen.mp3 import MP3
 import boto3
-from upload_video import UploadVideo
+
+try:
+    from lambdas.upload_video import UploadVideo
+except ModuleNotFoundError:
+    from upload_video import UploadVideo
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
