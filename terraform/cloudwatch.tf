@@ -10,13 +10,13 @@ resource "aws_cloudwatch_event_rule" "tweet_youtube_video_lambda_rule" {
 resource "aws_cloudwatch_event_target" "invoke_tweet_youtube_video_lambda" {
   rule      = aws_cloudwatch_event_rule.tweet_youtube_video_lambda_rule.name
   target_id = "trigger_tweet_youtube_video_lambda"
-  arn       = aws_lambda_function.tweet_youtube_video_lambda_lambda.arn
+  arn       = aws_lambda_function.tweet_youtube_video_lambda.arn
 }
 
 resource "aws_lambda_permission" "tweet_youtube_video_lambda_allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.tweet_youtube_video_lambda_lambda.function_name
+  function_name = aws_lambda_function.tweet_youtube_video_lambda.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.tweet_youtube_video_lambda_rule.arn
 }
