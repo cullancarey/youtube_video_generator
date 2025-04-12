@@ -9,6 +9,11 @@
 #   }
 # }
 
+data "aws_ecr_image" "youtube_lambda" {
+  repository_name = aws_ecr_repository.youtube_lambda.name
+  image_tag       = "latest"
+}
+
 
 resource "aws_lambda_function" "youtube_video_generator_lambda" {
   function_name = local.youtube_lambda
@@ -16,7 +21,7 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
   description   = "Lambda function for creating and uploading a youtube video to my channel"
 
   package_type = "Image"
-  image_uri    = "${aws_ecr_repository.youtube_lambda.repository_url}:latest"
+  image_uri    = "${aws_ecr_repository.youtube_lambda.repository_url}@${data.aws_ecr_image.youtube_lambda.image_digest}"
 
   timeout     = 120
   memory_size = 512
