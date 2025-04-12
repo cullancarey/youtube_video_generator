@@ -57,12 +57,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "youtube_uploader_bucket_lifecy
   bucket = aws_s3_bucket.youtube_uploader_bucket.id
 
   rule {
-    id = "ExpireAllAfter2Month"
+    id     = "ExpireAllAfter2Month"
+    status = "Enabled"
+
+    filter {} # Required in new AWS provider versions
 
     noncurrent_version_expiration {
       noncurrent_days = 60
     }
-
-    status = "Enabled"
   }
 }
