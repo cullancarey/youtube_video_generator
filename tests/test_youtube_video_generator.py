@@ -1,7 +1,7 @@
 import pytest
 import requests
 from unittest import mock
-from lambdas import youtube_video_generator
+from lambdas.youtube import youtube_video_generator
 
 
 @mock.patch("requests.get")
@@ -47,18 +47,20 @@ def test_file_setup_downloads(mock_resource):
     assert mock_bucket.download_file.call_count == 5
 
 
-@mock.patch("lambdas.youtube_video_generator.UploadVideo")
-@mock.patch("lambdas.youtube_video_generator.get_param", return_value="val")
-@mock.patch("lambdas.youtube_video_generator.praw.Reddit")
+@mock.patch("lambdas.youtube.youtube_video_generator.UploadVideo")
+@mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
+@mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube_video_generator.get_image_urls",
+    "lambdas.youtube.youtube_video_generator.get_image_urls",
     return_value="https://encrypted-image.jpg",
 )
-@mock.patch("lambdas.youtube_video_generator.download_image", return_value=b"bytes")
-@mock.patch("lambdas.youtube_video_generator.gTTS")
-@mock.patch("lambdas.youtube_video_generator.MP3")
-@mock.patch("lambdas.youtube_video_generator.subprocess.run")
-@mock.patch("lambdas.youtube_video_generator.file_setup")
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.download_image", return_value=b"bytes"
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.gTTS")
+@mock.patch("lambdas.youtube.youtube_video_generator.MP3")
+@mock.patch("lambdas.youtube.youtube_video_generator.subprocess.run")
+@mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
 def test_lambda_handler_minimal_path(
     mock_file_setup,
     mock_subproc,

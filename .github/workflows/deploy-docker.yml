@@ -1,44 +1,37 @@
 name: 'Deploy'
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   id-token: write # This is required for requesting the JWT
   contents: read # This is required for actions/checkout
 
 jobs:
-  build-tweet-lambda-package:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Install dependencies
-      run: ./create_tweet_lambda_package.sh
-      shell: bash
-    - name: Upload Tweet Lambda Build Package
-      uses: actions/upload-artifact@v4
-      with:
-        name: tweet_lambda_build
-        path: tweet_youtube_video.zip
+      - uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
+          role-session-name: docker-build-and-push-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
+          aws-region: ${{ vars.REGION }}
 
-  build-youtube-lambda-package:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install dependencies
-      run: ./create_youtube_lambda_package.sh
-      shell: bash
-    - name: Upload Youtube Lambda Build Package
-      uses: actions/upload-artifact@v4
-      with:
-        name: youtube_lambda_build
-        path: youtube_video_generator.zip
+      - name: Build and Push Tweet Lambda Docker Image
+        run: ./build_and_push_tweet.sh
+
+      - name: Build and Push YouTube Lambda Docker Image
+        run: ./build_and_push_youtube.sh
 
   terraform:
     name: 'Terraform'
     environment: production
     runs-on: ubuntu-latest
-    needs: [build-tweet-lambda-package, build-youtube-lambda-package]
+    needs: [build-and-push]
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
@@ -50,15 +43,6 @@ jobs:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Download all workflow run artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: ./terraform
-
-    - name: Display structure of downloaded files
-      run: ls -R
-      working-directory: ./terraform
 
     # Configure AWS Creds
     - name: Configure AWS Credentials 

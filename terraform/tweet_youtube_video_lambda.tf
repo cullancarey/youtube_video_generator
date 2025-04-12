@@ -9,28 +9,16 @@
 #   }
 # }
 
-resource "aws_s3_object" "tweet_youtube_video_lambda_file" {
-  bucket      = "youtube-uploader-bucket"
-  key         = "${local.tweet_video_lambda}.zip"
-  source      = "tweet_lambda_build/${local.tweet_video_lambda}.zip"
-  source_hash = filemd5("tweet_lambda_build/${local.tweet_video_lambda}.zip")
+resource "aws_lambda_function" "tweet_youtube_video_lambda" {
+  function_name = "tweet_lambda"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.tweet_lambda.repository_url}:latest"
+  role          = aws_iam_role.iam_for_tweet_youtube_video_lambda.arn
+  timeout       = 30
+  memory_size   = 512
 }
 
-resource "aws_lambda_function" "tweet_youtube_video_lambda_lambda" {
-  s3_bucket     = local.s3_bucket_for_lambda
-  s3_key        = aws_s3_object.tweet_youtube_video_lambda_file.id
-  function_name = local.tweet_video_lambda
-  role          = aws_iam_role.iam_for_tweet_youtube_video_lambda_lambda.arn
-  handler       = "${local.tweet_video_lambda}.lambda_handler"
-  description   = "Lambda function for tweeting about the youtube video on my channel"
-
-  source_code_hash = filebase64sha256("tweet_lambda_build/${local.tweet_video_lambda}.zip")
-
-  runtime = "python3.11"
-  timeout = 120
-}
-
-resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda_lambda" {
+resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda" {
   name = "${local.tweet_video_lambda}-role"
   path = "/service-role/"
 
@@ -51,7 +39,7 @@ resource "aws_iam_role" "iam_for_tweet_youtube_video_lambda_lambda" {
 POLICY
 }
 
-resource "aws_iam_policy" "tweet_youtube_video_lambda_lambda_iam_policy" {
+resource "aws_iam_policy" "tweet_youtube_video_lambda_iam_policy" {
   name   = "${local.tweet_video_lambda}-role-policy"
   path   = "/service-role/"
   policy = <<POLICY
@@ -92,7 +80,7 @@ resource "aws_iam_policy" "tweet_youtube_video_lambda_lambda_iam_policy" {
 POLICY
 }
 
-resource "aws_iam_role_policy_attachment" "tweet_youtube_video_lambda_lambda_attach" {
-  role       = aws_iam_role.iam_for_tweet_youtube_video_lambda_lambda.name
-  policy_arn = aws_iam_policy.tweet_youtube_video_lambda_lambda_iam_policy.arn
+resource "aws_iam_role_policy_attachment" "tweet_youtube_video_lambda_attach" {
+  role       = aws_iam_role.iam_for_tweet_youtube_video_lambda.name
+  policy_arn = aws_iam_policy.tweet_youtube_video_lambda_iam_policy.arn
 }

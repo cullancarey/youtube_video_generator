@@ -1,13 +1,13 @@
 import os
 import pytest
 from unittest import mock
-from lambdas.upload_video import UploadVideo
+from lambdas.youtube.upload_video import UploadVideo
 from oauth2client.client import OAuth2Credentials
 
 
-@mock.patch("lambdas.upload_video.Storage")
-@mock.patch("lambdas.upload_video.flow_from_clientsecrets")
-@mock.patch("lambdas.upload_video.build")
+@mock.patch("lambdas.youtube.upload_video.Storage")
+@mock.patch("lambdas.youtube.upload_video.flow_from_clientsecrets")
+@mock.patch("lambdas.youtube.upload_video.build")
 def test_get_authenticated_service(mock_build, mock_flow, mock_storage):
     flow = mock.Mock()
     mock_flow.return_value = flow
@@ -20,8 +20,8 @@ def test_get_authenticated_service(mock_build, mock_flow, mock_storage):
     mock_build.assert_called_once()
 
 
-@mock.patch("lambdas.upload_video.MediaFileUpload")
-@mock.patch("lambdas.upload_video.UploadVideo.resumable_upload")
+@mock.patch("lambdas.youtube.upload_video.MediaFileUpload")
+@mock.patch("lambdas.youtube.upload_video.UploadVideo.resumable_upload")
 def test_initialize_upload_calls_insert(mock_upload, mock_media):
     uploader = UploadVideo()
     youtube = mock.Mock()
@@ -39,10 +39,10 @@ def test_initialize_upload_calls_insert(mock_upload, mock_media):
     mock_upload.assert_called_once()
 
 
-@mock.patch("lambdas.upload_video.UploadVideo.get_authenticated_service")
-@mock.patch("lambdas.upload_video.UploadVideo.initialize_upload")
-@mock.patch("lambdas.upload_video.os.path.exists", return_value=True)
-@mock.patch("lambdas.upload_video.argparser.parse_args")
+@mock.patch("lambdas.youtube.upload_video.UploadVideo.get_authenticated_service")
+@mock.patch("lambdas.youtube.upload_video.UploadVideo.initialize_upload")
+@mock.patch("lambdas.youtube.upload_video.os.path.exists", return_value=True)
+@mock.patch("lambdas.youtube.upload_video.argparser.parse_args")
 def test_execute_calls_upload(mock_args, mock_exists, mock_init, mock_auth):
     uploader = UploadVideo()
     mock_args.return_value = mock.Mock(
@@ -57,10 +57,10 @@ def test_execute_calls_upload(mock_args, mock_exists, mock_init, mock_auth):
     assert mock_init.called
 
 
-@mock.patch("lambdas.upload_video.run_flow")
-@mock.patch("lambdas.upload_video.Storage")
-@mock.patch("lambdas.upload_video.flow_from_clientsecrets")
-@mock.patch("lambdas.upload_video.build")
+@mock.patch("lambdas.youtube.upload_video.run_flow")
+@mock.patch("lambdas.youtube.upload_video.Storage")
+@mock.patch("lambdas.youtube.upload_video.flow_from_clientsecrets")
+@mock.patch("lambdas.youtube.upload_video.build")
 def test_get_authenticated_service_invalid_creds(
     mock_build, mock_flow, mock_storage, mock_run_flow
 ):
@@ -79,8 +79,8 @@ def test_get_authenticated_service_invalid_creds(
     mock_build.assert_called_once()
 
 
-@mock.patch("lambdas.upload_video.MediaFileUpload")
-@mock.patch("lambdas.upload_video.build")
+@mock.patch("lambdas.youtube.upload_video.MediaFileUpload")
+@mock.patch("lambdas.youtube.upload_video.build")
 def test_initialize_upload_uses_correct_params(mock_build, mock_media_upload):
     uploader = UploadVideo()
     mock_youtube = mock.Mock()
@@ -107,8 +107,8 @@ def test_initialize_upload_uses_correct_params(mock_build, mock_media_upload):
     assert "snippet" in insert_call.kwargs["body"]
 
 
-@mock.patch("lambdas.upload_video.argparser")
-@mock.patch("lambdas.upload_video.os.path.exists")
+@mock.patch("lambdas.youtube.upload_video.argparser")
+@mock.patch("lambdas.youtube.upload_video.os.path.exists")
 def test_execute_fails_if_file_missing(mock_exists, mock_argparser):
     mock_exists.return_value = False
     uploader = UploadVideo()

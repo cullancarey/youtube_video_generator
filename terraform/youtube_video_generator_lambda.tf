@@ -10,24 +10,14 @@
 # }
 
 
-resource "aws_s3_object" "youtube_lambda_file" {
-  bucket      = "youtube-uploader-bucket"
-  key         = "${local.youtube_lambda}.zip"
-  source      = "youtube_lambda_build/${local.youtube_lambda}.zip"
-  source_hash = filemd5("youtube_lambda_build/${local.youtube_lambda}.zip")
-}
-
 resource "aws_lambda_function" "youtube_video_generator_lambda" {
-  s3_bucket     = local.s3_bucket_for_lambda
-  s3_key        = aws_s3_object.youtube_lambda_file.id
   function_name = local.youtube_lambda
   role          = aws_iam_role.iam_for_youtube_video_generator_lambda.arn
-  handler       = "${local.youtube_lambda}.lambda_handler"
   description   = "Lambda function for creating and uploading a youtube video to my channel"
 
-  source_code_hash = filebase64sha256("youtube_lambda_build/${local.youtube_lambda}.zip")
+  package_type = "Image"
+  image_uri    = "${aws_ecr_repository.youtube_lambda.repository_url}:latest"
 
-  runtime     = "python3.11"
   timeout     = 120
   memory_size = 512
 }

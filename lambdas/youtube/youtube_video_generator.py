@@ -14,7 +14,7 @@ from mutagen.mp3 import MP3
 import boto3
 
 try:
-    from lambdas.upload_video import UploadVideo
+    from .upload_video import UploadVideo
 except ModuleNotFoundError:
     from upload_video import UploadVideo
 

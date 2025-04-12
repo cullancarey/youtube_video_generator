@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from lambdas import tweet_youtube_video
+from lambdas.tweet import tweet_youtube_video
 
 
 def test_extract_keywords_from_text_basic():
@@ -69,9 +69,9 @@ def test_file_setup_downloads_files(mock_boto_resource):
 
 
 @mock.patch("tweepy.Client")
-@mock.patch("lambdas.tweet_youtube_video.get_param")
-@mock.patch("lambdas.tweet_youtube_video.get_authenticated_service")
-@mock.patch("lambdas.tweet_youtube_video.file_setup")
+@mock.patch("lambdas.tweet.tweet_youtube_video.get_param")
+@mock.patch("lambdas.tweet.tweet_youtube_video.get_authenticated_service")
+@mock.patch("lambdas.tweet.tweet_youtube_video.file_setup")
 def test_lambda_handler_gracefully_handles_no_youtube_results(
     mock_file_setup, mock_get_auth, mock_get_param, mock_tweepy_client
 ):
@@ -90,9 +90,9 @@ def test_lambda_handler_gracefully_handles_no_youtube_results(
 
 
 @mock.patch("tweepy.Client")
-@mock.patch("lambdas.tweet_youtube_video.get_param")
-@mock.patch("lambdas.tweet_youtube_video.get_authenticated_service")
-@mock.patch("lambdas.tweet_youtube_video.file_setup")
+@mock.patch("lambdas.tweet.tweet_youtube_video.get_param")
+@mock.patch("lambdas.tweet.tweet_youtube_video.get_authenticated_service")
+@mock.patch("lambdas.tweet.tweet_youtube_video.file_setup")
 def test_lambda_handler_posts_tweet(
     mock_file_setup, mock_get_auth, mock_get_param, mock_tweepy_client
 ):

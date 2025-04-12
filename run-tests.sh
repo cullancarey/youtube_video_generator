@@ -49,9 +49,9 @@ echo "============================================"
 echo " Running all Lambda tests locally"
 echo "============================================"
 
-# Upgrade dependencies
-upgrade_packages "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
-upgrade_packages "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
+# Updated paths to new locations
+upgrade_packages "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
+upgrade_packages "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
 
 # Run tests
 test_tweet_lambda

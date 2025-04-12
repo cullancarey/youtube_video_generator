@@ -1,8 +1,9 @@
 from pathlib import Path
 
-# File names
-dev_filename = "youtube_lambda_requirements-dev.txt"
-prod_filename = "youtube_lambda_requirements.txt"
+# Adjust paths for new structure
+base_dir = Path(__file__).parent / "lambdas" / "youtube"
+dev_filename = base_dir / "youtube_lambda_requirements-dev.txt"
+prod_filename = base_dir / "youtube_lambda_requirements.txt"
 
 # Dev-only dependencies to exclude from the production file
 dev_only_deps = {
@@ -35,13 +36,10 @@ def regenerate_prod_requirements(dev_path: Path, prod_path: Path, exclude_deps: 
         f.write("\n".join(prod_lines) + "\n")
 
     print(
-        f"✅ Regenerated {prod_path.name} with {len(prod_lines)} production packages (excluded {len(exclude_deps)} dev packages)."
+        f"✅ Regenerated {prod_path.name} with {len(prod_lines)} production packages "
+        f"(excluded {len(exclude_deps)} dev packages)."
     )
 
 
 if __name__ == "__main__":
-    root = Path(__file__).parent
-    dev_path = root / dev_filename
-    prod_path = root / prod_filename
-
-    regenerate_prod_requirements(dev_path, prod_path, dev_only_deps)
+    regenerate_prod_requirements(dev_filename, prod_filename, dev_only_deps)
