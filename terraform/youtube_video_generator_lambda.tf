@@ -23,7 +23,6 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
 }
 
 resource "aws_iam_role" "iam_for_youtube_video_generator_lambda" {
-  name = "${local.youtube_lambda}-role"
   path = "/service-role/"
 
   assume_role_policy = <<POLICY
@@ -44,7 +43,6 @@ POLICY
 }
 
 resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {
-  name   = "${local.youtube_lambda}-role-policy"
   path   = "/service-role/"
   policy = <<POLICY
 {
