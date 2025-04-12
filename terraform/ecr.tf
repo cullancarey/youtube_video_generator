@@ -29,6 +29,7 @@ resource "aws_ecr_lifecycle_policy" "tweet_lambda" {
   })
 }
 
+
 resource "aws_ecr_repository" "youtube_lambda" {
   name                 = "youtube-lambda-repo"
   image_tag_mutability = "MUTABLE"
