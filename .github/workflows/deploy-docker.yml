@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5.2
         with:
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
           role-session-name: docker-build-and-push-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
@@ -43,11 +43,11 @@ jobs:
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # Configure AWS Creds
     - name: Configure AWS Credentials 
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v5.1
       with:
         role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
         role-session-name: terraform-deployment-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
@@ -55,7 +55,7 @@ jobs:
 
     # Install the latest version of Terraform CLI
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v3.1.2
 
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
@@ -75,11 +75,10 @@ jobs:
       continue-on-error: false
 
     - name: Terraform Apply
-      if: "!contains(github.event.head_commit.message, '[tf-plan]')"
+      if: "!contains(github.event.head_commit.message, '[tf-apply]')"
       id: apply
       run: terraform apply --auto-approve -input=false
 
     - name: Terraform Plan
-      if: contains(github.event.head_commit.message, '[tf-plan]')
       id: plan
       run: terraform plan --input=false
