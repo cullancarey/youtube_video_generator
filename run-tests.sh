@@ -40,8 +40,8 @@ test_tweet_lambda() {
 test_youtube_lambda() {
   echo "🔹 Activating venv-youtube and running tests for upload_video.py and youtube_video_generator.py..."
   source "$PROJECT_ROOT/venv-youtube/bin/activate"
-  PYTHONPATH=. python -m pytest tests/test_upload_video.py
-  PYTHONPATH=. python -m pytest tests/test_youtube_video_generator.py
+  PYTHONPATH=.:$PROJECT_ROOT/lambdas/youtube python -m pytest tests/test_upload_video.py
+  PYTHONPATH=.:$PROJECT_ROOT/lambdas/youtube python -m pytest tests/test_youtube_video_generator.py
   deactivate
 }
 
