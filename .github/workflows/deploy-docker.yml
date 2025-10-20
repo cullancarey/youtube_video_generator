@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5.2
+        uses: aws-actions/configure-aws-credentials@v5.1
         with:
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
           role-session-name: docker-build-and-push-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
