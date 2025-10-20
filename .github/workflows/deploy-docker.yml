@@ -75,7 +75,7 @@ jobs:
       continue-on-error: false
 
     - name: Terraform Apply
-      if: "!contains(github.event.head_commit.message, '[tf-apply]')"
+      if: contains(github.event.head_commit.message, '[tf-apply]')
       id: apply
       run: terraform apply --auto-approve -input=false
 
