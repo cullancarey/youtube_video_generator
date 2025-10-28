@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.11
+FROM public.ecr.aws/lambda/python:3.13
 
 # Install Python dependencies into Lambda task root
 COPY lambdas/youtube/youtube_lambda_requirements.txt .
