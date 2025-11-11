@@ -10,7 +10,7 @@ permissions:
   contents: read # This is required for actions/checkout
 
 jobs:
-  build-and-push:
+  build-tweet:
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -19,12 +19,22 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
-          role-session-name: docker-build-and-push-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
+          role-session-name: tweet-docker-build-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
           aws-region: ${{ vars.REGION }}
-
       - name: Build and Push Tweet Lambda Docker Image
         run: ./build_and_push_tweet.sh
 
+  build-youtube:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
+          role-session-name: youtube-docker-build-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
+          aws-region: ${{ vars.REGION }}
       - name: Build and Push YouTube Lambda Docker Image
         run: ./build_and_push_youtube.sh
 
@@ -32,7 +42,7 @@ jobs:
     name: 'Terraform'
     environment: production
     runs-on: ubuntu-latest
-    needs: [build-and-push]
+    needs: [build-tweet, build-youtube]
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
