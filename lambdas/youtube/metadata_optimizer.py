@@ -29,11 +29,8 @@ def extract_keywords_from_text(text: str, max_keywords: int = 8):
 
 def generate_title_and_description(text: str, author: str, url: str):
     """Create SEO-optimized title and description."""
-    key_phrase = (
-        random.choice(re.findall(r"[A-Z][a-z]+\s[A-Z][a-z]+", text))
-        if text
-        else "Daily Inspiration"
-    )
+    matches = re.findall(r"[A-Z][a-z]+\s[A-Z][a-z]+", text)
+    key_phrase = random.choice(matches) if matches else "Daily Inspiration"
     date_str = datetime.now().strftime("%B %d, %Y")
 
     title = f"{key_phrase} — {date_str} | Quote of the Day"
