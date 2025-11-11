@@ -12,9 +12,17 @@ dev_only_deps = {
     "pytest",
     "iniconfig",
     "pluggy",
+    "s3transfer",
     "jmespath",
-    "packaging",
     "pip-check-reqs",
+    "setuptools",
+    "wheel",
+    "Pygments",
+    "packaging",
+    "pipdeptree",
+    "urllib3",
+    "six",
+    "python-dateutil",
 }
 
 

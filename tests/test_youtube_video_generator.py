@@ -1,7 +1,17 @@
+import logging
+import sys
 import pytest
 import requests
 from unittest import mock
 from lambdas.youtube import youtube_video_generator
+
+# Configure root logger to print everything to stdout immediately
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
+    stream=sys.stdout,
+    force=True,
+)
 
 
 @mock.patch("requests.get")
@@ -74,6 +84,8 @@ def test_lambda_handler_minimal_path(
 ):
     mock_subproc.return_value.returncode = 0
     mock_mp3.return_value.info.length = 1
+    mock_gtts.return_value.save.return_value = None
+    mock_gtts.return_value.lang_check.return_value = True
 
     mock_post = mock.Mock()
     mock_post.over_18 = False

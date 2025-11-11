@@ -5,15 +5,14 @@ import os
 import subprocess
 import shlex
 import shutil
-import random
 import logging
-from datetime import datetime
 from gtts import gTTS
 import requests
 from mutagen.mp3 import MP3
 import boto3
 
 # from .upload_video import UploadVideo # for local testing
+from metadata_optimizer import optimize_metadata
 from upload_video import UploadVideo
 
 logger = logging.getLogger()
@@ -79,9 +78,15 @@ def file_setup():
 
 
 def lambda_handler(event, context):
+    # Step 1: Setup
     try:
         file_setup()
+    except Exception as e:
+        logger.critical(f"File setup failed: {e}", exc_info=True)
+        return
 
+    # Step 2: Initialize Reddit
+    try:
         reddit = praw.Reddit(
             client_id=get_param("reddit_client_id"),
             client_secret=get_param("reddit_client_secret"),
@@ -89,22 +94,38 @@ def lambda_handler(event, context):
             username=get_param("reddit_username"),
             password=get_param("reddit_password"),
         )
+    except Exception as e:
+        logger.critical(f"Reddit initialization failed: {e}", exc_info=True)
+        return
 
+    # Step 3: Fetch and write Reddit content
+    try:
         author = url = ""
         with open("/tmp/story.txt", "w", encoding="utf-8") as f:
             for post in reddit.subreddit("quotes").new(limit=1):
                 if not post.over_18:
                     f.write(f"{post.title}\n{post.selftext}")
                     author, url = post.author, post.url
+        logger.info("Reddit content written to /tmp/story.txt.")
+    except Exception as e:
+        logger.critical(f"Failed to fetch or write Reddit post: {e}", exc_info=True)
+        return
 
+    # Step 4: Generate audio
+    try:
         with open("/tmp/story.txt", "r", encoding="utf-8") as f:
             text = f.read()
             tts = gTTS(text)
             tts.save("/tmp/story.mp3")
+        logger.info("Audio generated successfully.")
+    except Exception as e:
+        logger.critical(f"TTS or audio generation failed: {e}", exc_info=True)
+        return
 
+    # Step 5: Analyze audio and collect images
+    try:
         audio = MP3("/tmp/story.mp3")
         num_images = max(1, int(audio.info.length))
-
         raw_html = get_image_urls(text) or get_image_urls("coding with python")
         raw_urls = raw_html.split('"') if raw_html else []
         urls = [u.split(";s")[0] for u in raw_urls if "https://encrypted-" in u]
@@ -114,40 +135,43 @@ def lambda_handler(event, context):
             if image:
                 with open(f"/tmp/images/image{idx}.jpg", "wb") as f:
                     f.write(image)
+        logger.info(f"{num_images} image(s) prepared.")
+    except Exception as e:
+        logger.critical(f"Image processing failed: {e}", exc_info=True)
+        return
 
+    # Step 6: Generate video
+    try:
         frame_rate = audio.info.length / num_images
         video_path = "/tmp/output.mp4"
         command = (
-            f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} -pix_fmt yuvj420p "
-            f"-pattern_type glob -i '/tmp/images/*.jpg' -i /tmp/story.mp3 "
-            f"-c:v libx264 -crf 18 -vf scale=1280:720:force_original_aspect_ratio=decrease,"
+            f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} "
+            f"-pix_fmt yuvj420p -pattern_type glob -i '/tmp/images/*.jpg' "
+            f"-i /tmp/story.mp3 -c:v libx264 -crf 18 "
+            f"-vf scale=1280:720:force_original_aspect_ratio=decrease,"
             f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -c:a aac -b:a 192k -shortest {video_path}"
         )
 
         result = subprocess.run(shlex.split(command), capture_output=True)
         if result.returncode != 0:
-            logger.error(f"ffmpeg failed: {result.stderr.decode()}")
-            raise RuntimeError("Video generation failed")
+            raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
+        logger.info("Video created successfully.")
+    except Exception as e:
+        logger.critical(f"Video generation failed: {e}", exc_info=True)
+        return
 
-        titles = [
-            f"Daily Quote {datetime.today().strftime('%Y-%m-%d')}",
-            "Quotes Daily",
-            f"{datetime.today().strftime('%Y-%m-%d')} Quote",
-            "Quotes",
-            "Daily Quote",
-            "Quote",
-        ]
-        description = f"""Please enjoy this daily quote from u/{author}!
-These quotes are from r/quotes on Reddit.
-Link to post: {url}
-This video was created and uploaded via Python!"""
-        keywords = ["quote", "quotes", "daily quote", "python", "reddit"]
-
+    # Step 7: Upload
+    try:
+        title, description, keywords, thumbnail = optimize_metadata(text, author, url)
         uploader = UploadVideo()
-        uploader.execute(
-            video_path, random.choice(titles), description, "22", keywords, "public"
-        )
+        uploader.execute(video_path, title, description, "22", keywords, "public")
+        logger.info("Video uploaded successfully.")
+    except Exception as e:
+        logger.critical(f"Upload failed: {e}", exc_info=True)
+        return
 
+    # Step 8: Cleanup
+    try:
         for path in [
             "/tmp/images",
             "/tmp/story.txt",
@@ -155,15 +179,10 @@ This video was created and uploaded via Python!"""
             "/tmp/output.mp4",
             "/tmp/client_secrets.json",
         ]:
-            try:
-                if os.path.isdir(path):
-                    shutil.rmtree(path)
-                elif os.path.isfile(path):
-                    os.remove(path)
-            except Exception as e:
-                logger.warning(f"Failed to delete {path}: {e}")
-
-        logger.info("Lambda completed successfully.")
-
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            elif os.path.isfile(path):
+                os.remove(path)
+        logger.info("Cleanup complete. Lambda finished successfully.")
     except Exception as e:
-        logger.critical(f"Fatal error in lambda_handler: {e}")
+        logger.warning(f"Cleanup failed: {e}", exc_info=True)

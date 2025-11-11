@@ -14,7 +14,15 @@ dev_only_deps = {
     "pluggy",
     "s3transfer",
     "jmespath",
-    "pip-check-reqs @ git+https://github.com/r1chardj0n3s/pip-check-reqs.git@6dbbabcd6b2ce91387bd4db314725a54f0dedcc9",
+    "pip-check-reqs",
+    "setuptools",
+    "wheel",
+    "Pygments",
+    "packaging",
+    "pipdeptree",
+    "urllib3",
+    "six",
+    "python-dateutil",
 }
 
 
