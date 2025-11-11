@@ -31,7 +31,7 @@ def generate_title_and_description(text: str, author: str, url: str):
     """Create SEO-optimized title and description."""
     text = text or ""
     # Handle None or empty text safely
-    matches = re.findall(r"[A-Z][a-z]+\s[A-Z][a-z]+", text) if text else []
+    matches = re.findall(r"[A-Z][a-z]+\s[A-Z][a-z]+", text)
     key_phrase = random.choice(matches) if matches else "Daily Inspiration"
     date_str = datetime.now().strftime("%B %d, %Y")
 
