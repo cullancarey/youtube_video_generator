@@ -1,6 +1,6 @@
 FROM public.ecr.aws/lambda/python:3.13
 
-# Install dependencies
+# Install dependencies from tweet_lambda_requirements.txt
 COPY lambdas/tweet/tweet_lambda_requirements.txt .
 RUN pip install --no-cache-dir -r tweet_lambda_requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
