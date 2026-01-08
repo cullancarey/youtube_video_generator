@@ -33,5 +33,5 @@ setuptools==80.9.0
 six==1.17.0
 tweepy==4.16.0
 uritemplate==4.2.0
-urllib3==2.5.0
+urllib3==2.6.3
 wheel==0.45.1
