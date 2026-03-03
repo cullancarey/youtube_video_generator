@@ -96,10 +96,7 @@ jobs:
 
     - name: Terraform Plan
       id: plan
-      run: terraform plan \
-        -var="tweet_image_tag=${{ needs.build-tweet.outputs.image-tag }}" \
-        -var="youtube_image_tag=${{ needs.build-youtube.outputs.image-tag }}" \
-        --input=false
+      run: terraform plan -var="tweet_image_tag=${{ needs.build-tweet.outputs.image-tag }}" -var="youtube_image_tag=${{ needs.build-youtube.outputs.image-tag }}" --input=false
 
     - name: Terraform Apply
       if: contains(github.event.head_commit.message, '[tf-apply]')
