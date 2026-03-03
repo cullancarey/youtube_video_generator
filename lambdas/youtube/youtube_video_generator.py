@@ -6,6 +6,7 @@ import subprocess
 import shlex
 import shutil
 import logging
+from gtts import gTTS
 import requests
 from mutagen.mp3 import MP3
 import boto3
@@ -18,25 +19,19 @@ logger = logging.getLogger()
 logger.setLevel("INFO")
 
 
-def get_images_unsplash(query, num_images=5):
-    """Fetch images from Unsplash API (free, copyright-friendly)."""
+def get_image_urls(query):
     try:
-        url = "https://api.unsplash.com/search/photos"
-        params = {"query": query, "per_page": num_images, "order_by": "relevant"}
-        response = requests.get(url, params=params, timeout=60)
+        url = f"https://www.google.be/search?q={query}&tbm=isch"
+        response = requests.get(url, timeout=60)
         if response.status_code == 200:
-            data = response.json()
-            urls = [photo["urls"]["regular"] for photo in data.get("results", [])]
-            logger.info(f"Fetched {len(urls)} images from Unsplash for: {query}")
-            return urls
-        logger.error(f"Unsplash API error: {response.status_code}")
+            logger.info(f"Fetched image URLs for query: {query}")
+            return response.text
+        logger.error(f"Failed to fetch image URLs. Status: {response.status_code}")
     except requests.Timeout:
-        logger.error(f"Timeout fetching images from Unsplash for query: {query}")
+        logger.error(f"Timeout fetching image URLs for query: {query}")
     except Exception as e:
-        logger.exception(
-            f"Exception fetching images from Unsplash for query: {query}: {e}"
-        )
-    return []
+        logger.exception(f"Exception fetching image URLs for query: {query}: {e}")
+    return None
 
 
 def download_image(url):
@@ -61,22 +56,6 @@ def get_param(param_name):
     except Exception as e:
         logger.exception(f"Error retrieving parameter {param_name}: {e}")
         return None
-
-
-def generate_audio_with_polly(text):
-    """Generate audio using AWS Polly TTS."""
-    try:
-        polly = boto3.client("polly", region_name="us-east-2")
-        logger.info("Generating audio with AWS Polly...")
-        response = polly.synthesize_speech(
-            Text=text, OutputFormat="mp3", VoiceId="Joanna", Engine="neural"
-        )
-        with open("/tmp/story.mp3", "wb") as f:
-            f.write(response["AudioStream"].read())
-        logger.info("Audio generated successfully with Polly.")
-    except Exception as e:
-        logger.exception(f"Polly TTS generation failed: {e}")
-        raise
 
 
 def file_setup():
@@ -136,32 +115,27 @@ def lambda_handler(event, context):
     try:
         with open("/tmp/story.txt", "r", encoding="utf-8") as f:
             text = f.read()
-            generate_audio_with_polly(text)
+            tts = gTTS(text)
+            tts.save("/tmp/story.mp3")
+        logger.info("Audio generated successfully.")
     except Exception as e:
-        logger.critical(f"Audio generation failed: {e}", exc_info=True)
+        logger.critical(f"TTS or audio generation failed: {e}", exc_info=True)
         return
 
     # Step 5: Analyze audio and collect images
     try:
         audio = MP3("/tmp/story.mp3")
         num_images = max(1, int(audio.info.length))
+        raw_html = get_image_urls(text) or get_image_urls("coding with python")
+        raw_urls = raw_html.split('"') if raw_html else []
+        urls = [u.split(";s")[0] for u in raw_urls if "https://encrypted-" in u]
 
-        # Fetch images from Unsplash using post text as query
-        urls = get_images_unsplash(text, num_images=num_images)
-
-        # Fallback to generic search if specific query yields no results
-        if not urls:
-            logger.warning(f"No images found for query, falling back to generic search")
-            urls = get_images_unsplash(
-                "motivation quote inspiration", num_images=num_images
-            )
-
-        for idx, url in enumerate(urls):
-            image = download_image(url)
+        for idx in range(min(num_images, len(urls))):
+            image = download_image(urls[idx])
             if image:
                 with open(f"/tmp/images/image{idx}.jpg", "wb") as f:
                     f.write(image)
-        logger.info(f"Downloaded {len(urls)} images from Unsplash.")
+        logger.info(f"{num_images} image(s) prepared.")
     except Exception as e:
         logger.critical(f"Image processing failed: {e}", exc_info=True)
         return
