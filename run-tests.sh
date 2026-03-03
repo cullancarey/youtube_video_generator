@@ -2,6 +2,7 @@
 set -e
 
 PROJECT_ROOT=$(pwd)
+MODE="${1:-upgrade}"  # Default to 'upgrade', or pass 'install' to skip upgrades
 
 upgrade_packages() {
   venv_path="$1"
@@ -9,6 +10,7 @@ upgrade_packages() {
   lambda_name="$3"
 
   echo "🔄 Upgrading packages for $lambda_name..."
+  echo "🔹 Activating $venv_path and checking for outdated packages..."
   source "$venv_path/bin/activate"
 
   # Step 1: update pip itself first (safer resolver)
@@ -44,6 +46,20 @@ for pkg in json.load(sys.stdin):
   # Step 4: refresh lockfile with final resolved state
   pip freeze > "$requirements_file"
   deactivate
+  echo "✅ Deactivated $venv_path; Package upgrade complete for $lambda_name."
+}
+
+install_requirements() {
+  venv_path="$1"
+  requirements_file="$2"
+  lambda_name="$3"
+
+  echo "📦 Installing packages for $lambda_name from $requirements_file..."
+  echo "🔹 Activating $venv_path and installing packages..."
+  source "$venv_path/bin/activate"
+  pip install -r "$requirements_file"
+  deactivate
+  echo "✅ Deactivated $venv_path; Installation complete for $lambda_name."
 }
 
 test_tweet_lambda() {
@@ -65,8 +81,18 @@ echo "============================================"
 echo " Running all Lambda tests locally"
 echo "============================================"
 
-upgrade_packages "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
-upgrade_packages "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
+if [[ "$MODE" == "upgrade" ]]; then
+  echo "🔄 Upgrade mode: upgrading all packages..."
+  upgrade_packages "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
+  upgrade_packages "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
+elif [[ "$MODE" == "install" ]]; then
+  echo "📦 Install mode: installing from requirements-dev.txt..."
+  install_requirements "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
+  install_requirements "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
+else
+  echo "❌ Unknown mode: $MODE. Use 'upgrade' (default) or 'install'."
+  exit 1
+fi
 
 test_tweet_lambda
 test_youtube_lambda
