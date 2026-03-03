@@ -74,6 +74,12 @@ resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {
             "Effect": "Allow",
             "Action": ["s3:GetObject", "s3:ListBucket"],
             "Resource": "arn:aws:s3:::youtube-uploader-bucket/*"
+        },
+        {
+            "Sid": "AllowPollyTTS",
+            "Effect": "Allow",
+            "Action": "polly:SynthesizeSpeech",
+            "Resource": "*"
         }
     ]
 }
