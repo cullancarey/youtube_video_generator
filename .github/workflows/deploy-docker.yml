@@ -13,29 +13,39 @@ jobs:
   build-tweet:
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
           role-session-name: tweet-docker-build-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
           aws-region: ${{ vars.REGION }}
       - name: Build and Push Tweet Lambda Docker Image
+        id: build
+        env:
+          AWS_REGION: ${{ vars.REGION }}
         run: ./build_and_push_tweet.sh
 
   build-youtube:
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
           role-session-name: youtube-docker-build-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
           aws-region: ${{ vars.REGION }}
       - name: Build and Push YouTube Lambda Docker Image
+        id: build
+        env:
+          AWS_REGION: ${{ vars.REGION }}
         run: ./build_and_push_youtube.sh
 
   terraform:
@@ -53,11 +63,11 @@ jobs:
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     # Configure AWS Creds
     - name: Configure AWS Credentials 
-      uses: aws-actions/configure-aws-credentials@v5
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/${{ vars.DEPLOYMENT_ROLE}}
         role-session-name: terraform-deployment-${{ vars.REGION }}-${{ vars.ACCOUNT_ID }}
@@ -65,7 +75,7 @@ jobs:
 
     # Install the latest version of Terraform CLI
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v4
 
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
@@ -86,7 +96,10 @@ jobs:
 
     - name: Terraform Plan
       id: plan
-      run: terraform plan --input=false
+      run: terraform plan \
+        -var="tweet_image_tag=${{ needs.build-tweet.outputs.image-tag }}" \
+        -var="youtube_image_tag=${{ needs.build-youtube.outputs.image-tag }}" \
+        --input=false
 
     - name: Terraform Apply
       if: contains(github.event.head_commit.message, '[tf-apply]')

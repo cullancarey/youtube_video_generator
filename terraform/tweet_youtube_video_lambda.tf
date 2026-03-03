@@ -2,16 +2,9 @@
 ######### TWEET VIDEO LAMBDA ##########
 #############################################
 
-
-# resource "null_resource" "create_tweet_youtube_video_lambda_package" {
-#   provisioner "local-exec" {
-#     command = "../create_tweet_lambda_package.sh"
-#   }
-# }
-
 data "aws_ecr_image" "tweet_lambda" {
   repository_name = aws_ecr_repository.tweet_lambda.name
-  image_tag       = "latest"
+  image_tag       = var.tweet_image_tag
 }
 
 resource "aws_lambda_function" "tweet_youtube_video_lambda" {

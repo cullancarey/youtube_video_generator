@@ -2,16 +2,9 @@
 ######### YOUTUBE LAMBDA ##########
 #############################################
 
-
-# resource "null_resource" "create_youtube_video_generator_package" {
-#   provisioner "local-exec" {
-#     command = "../create_youtube_lambda_package.sh"
-#   }
-# }
-
 data "aws_ecr_image" "youtube_lambda" {
   repository_name = aws_ecr_repository.youtube_lambda.name
-  image_tag       = "latest"
+  image_tag       = var.youtube_image_tag
 }
 
 
