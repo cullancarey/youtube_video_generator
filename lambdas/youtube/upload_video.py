@@ -1,5 +1,6 @@
 """Handles YouTube video uploads via Google API"""
 
+import argparse
 import http.client
 import httplib2
 import os
@@ -52,7 +53,8 @@ class UploadVideo:
         credentials = storage.get()
         if credentials is None or credentials.invalid:
             logger.info("OAuth credentials missing or invalid. Running auth flow.")
-            credentials = run_flow(flow, storage, args)
+            oauth_args = argparser.parse_args(args=["--noauth_local_webserver"])
+            credentials = run_flow(flow, storage, oauth_args)
 
         # Existing token files can be valid but missing newly required scopes.
         creds_scopes = getattr(credentials, "scopes", None)
@@ -223,25 +225,14 @@ class UploadVideo:
         if isinstance(keywords, (list, tuple)):
             keywords = ",".join(keywords)
 
-        argparser.add_argument("--file", default=file, help="Video file to upload")
-        argparser.add_argument("--title", default=title, help="Video title")
-        argparser.add_argument(
-            "--description", default=description, help="Video description"
+        args = argparse.Namespace(
+            file=file,
+            title=title,
+            description=description,
+            category=category,
+            keywords=keywords,
+            privacyStatus=privacy_status,
         )
-        argparser.add_argument(
-            "--category", default=category, help="YouTube video category ID"
-        )
-        argparser.add_argument(
-            "--keywords", default=keywords, help="Comma-separated keywords/tags"
-        )
-        argparser.add_argument(
-            "--privacyStatus",
-            choices=("public", "private", "unlisted"),
-            default=privacy_status,
-            help="Privacy status of the video",
-        )
-
-        args = argparser.parse_args()
         logger.info(
             f"Upload arguments: file={args.file}, title={args.title}, privacy={args.privacyStatus}"
         )
