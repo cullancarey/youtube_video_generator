@@ -142,19 +142,22 @@ def lambda_handler(event, context):
 
     # Step 6: Generate video
     try:
-        frame_rate = audio.info.length / num_images
+        frame_rate = max(0.1, audio.info.length / max(1, num_images))
         video_path = "/tmp/output.mp4"
         command = (
             f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} "
-            f"-pix_fmt yuvj420p -pattern_type glob -i '/tmp/images/*.jpg' "
-            f"-i /tmp/story.mp3 -c:v libx264 -crf 18 "
+            f"-pattern_type glob -i '/tmp/images/*.jpg' "
+            f"-i /tmp/story.mp3 -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 18 "
             f"-vf scale=1280:720:force_original_aspect_ratio=decrease,"
-            f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -c:a aac -b:a 192k -shortest {video_path}"
+            f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -movflags +faststart "
+            f"-c:a aac -b:a 192k -shortest {video_path}"
         )
 
         result = subprocess.run(shlex.split(command), capture_output=True)
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
+        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1024:
+            raise RuntimeError("Generated video file is missing or too small.")
         logger.info("Video created successfully.")
     except Exception as e:
         logger.critical(f"Video generation failed: {e}", exc_info=True)
@@ -164,8 +167,10 @@ def lambda_handler(event, context):
     try:
         title, description, keywords, thumbnail = optimize_metadata(text, author, url)
         uploader = UploadVideo()
-        uploader.execute(video_path, title, description, "22", keywords, "public")
-        logger.info("Video uploaded successfully.")
+        video_id = uploader.execute(
+            video_path, title, description, "22", keywords, "public"
+        )
+        logger.info(f"Video uploaded and processed successfully. video_id={video_id}")
     except Exception as e:
         logger.critical(f"Upload failed: {e}", exc_info=True)
         return

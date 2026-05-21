@@ -3,7 +3,6 @@
 import http.client
 import httplib2
 import os
-import sys
 import random
 import time
 import logging
@@ -20,6 +19,17 @@ logger.setLevel("INFO")
 
 
 class UploadVideo:
+    def validate_video_file(self, file_path):
+        if not os.path.exists(file_path):
+            raise ValueError(f"Invalid file path specified: {file_path}")
+
+        size = os.path.getsize(file_path)
+        # Guard against truncated/empty uploads that YouTube later abandons.
+        if size < 1024:
+            raise ValueError(
+                f"Video file is too small to be valid ({size} bytes): {file_path}"
+            )
+
     def get_authenticated_service(self, args):
         httplib2.RETRIES = 1
         client_secrets_file = "/tmp/client_secrets.json"
@@ -59,10 +69,15 @@ class UploadVideo:
         insert_request = youtube.videos().insert(
             part=",".join(body.keys()),
             body=body,
-            media_body=MediaFileUpload(options.file, chunksize=-1, resumable=True),
+            media_body=MediaFileUpload(
+                options.file,
+                mimetype="video/mp4",
+                chunksize=-1,
+                resumable=True,
+            ),
         )
 
-        self.resumable_upload(insert_request)
+        return self.resumable_upload(insert_request)
 
     def resumable_upload(self, insert_request):
         retriable_exceptions = (
@@ -88,9 +103,10 @@ class UploadVideo:
                 status, response = insert_request.next_chunk()
                 if response and "id" in response:
                     logger.info(f"Video id '{response['id']}' uploaded successfully.")
+                    return response["id"]
                 elif response:
                     logger.critical(f"Upload failed: {response}")
-                    sys.exit(f"Upload failed: {response}")
+                    raise RuntimeError(f"Upload failed: {response}")
             except HttpError as err:
                 if err.resp.status in retriable_status_codes:
                     error = f"Retriable HTTP error {err.resp.status}: {err.content}"
@@ -104,10 +120,67 @@ class UploadVideo:
                 retry += 1
                 if retry > max_retries:
                     logger.critical("Max retries exceeded.")
-                    sys.exit("Max retries exceeded.")
+                    raise RuntimeError("Max retries exceeded.")
                 sleep_time = random.uniform(1, 2**retry)
                 logger.info(f"Sleeping {sleep_time:.2f}s before retry...")
                 time.sleep(sleep_time)
+
+    def wait_for_processing(
+        self, youtube, video_id, timeout_seconds=600, poll_interval_seconds=10
+    ):
+        start_time = time.time()
+
+        while True:
+            response = (
+                youtube.videos()
+                .list(part="processingDetails,status", id=video_id)
+                .execute()
+            )
+            items = response.get("items", [])
+            if not items:
+                raise RuntimeError(
+                    f"Uploaded video was not found by YouTube API: {video_id}"
+                )
+
+            item = items[0]
+            processing_details = item.get("processingDetails", {})
+            status_details = item.get("status", {})
+
+            processing_status = processing_details.get("processingStatus")
+            failure_reason = processing_details.get("processingFailureReason")
+            upload_status = status_details.get("uploadStatus")
+
+            logger.info(
+                "YouTube processing status for %s: processing=%s upload=%s",
+                video_id,
+                processing_status,
+                upload_status,
+            )
+
+            if processing_status == "succeeded" and upload_status in (
+                None,
+                "processed",
+            ):
+                return
+
+            if processing_status in ("failed", "terminated"):
+                raise RuntimeError(
+                    f"YouTube processing failed for {video_id}. "
+                    f"status={processing_status}, reason={failure_reason}, upload_status={upload_status}"
+                )
+
+            if upload_status in ("rejected", "failed", "deleted"):
+                raise RuntimeError(
+                    f"YouTube upload rejected for {video_id}. upload_status={upload_status}"
+                )
+
+            if time.time() - start_time > timeout_seconds:
+                raise TimeoutError(
+                    f"Timed out waiting for YouTube processing for video {video_id}. "
+                    f"last_processing_status={processing_status}, upload_status={upload_status}"
+                )
+
+            time.sleep(poll_interval_seconds)
 
     def execute(self, file, title, description, category, keywords, privacy_status):
         logger.info("Preparing video upload parameters...")
@@ -138,12 +211,13 @@ class UploadVideo:
             f"Upload arguments: file={args.file}, title={args.title}, privacy={args.privacyStatus}"
         )
 
-        if not os.path.exists(args.file):
-            logger.critical("Invalid file path specified.")
-            sys.exit("Invalid file path specified.")
+        self.validate_video_file(args.file)
 
         youtube = self.get_authenticated_service(args)
         try:
-            self.initialize_upload(youtube, args)
+            video_id = self.initialize_upload(youtube, args)
+            self.wait_for_processing(youtube, video_id)
+            return video_id
         except HttpError as err:
             logger.error(f"HTTP error {err.resp.status}: {err.content}")
+            raise

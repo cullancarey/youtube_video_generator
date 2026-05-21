@@ -1,4 +1,3 @@
-import os
 import pytest
 from unittest import mock
 from lambdas.youtube.upload_video import UploadVideo
@@ -41,10 +40,15 @@ def test_initialize_upload_calls_insert(mock_upload, mock_media):
 
 @mock.patch("lambdas.youtube.upload_video.UploadVideo.get_authenticated_service")
 @mock.patch("lambdas.youtube.upload_video.UploadVideo.initialize_upload")
+@mock.patch("lambdas.youtube.upload_video.UploadVideo.wait_for_processing")
+@mock.patch("lambdas.youtube.upload_video.os.path.getsize", return_value=4096)
 @mock.patch("lambdas.youtube.upload_video.os.path.exists", return_value=True)
 @mock.patch("lambdas.youtube.upload_video.argparser.parse_args")
-def test_execute_calls_upload(mock_args, mock_exists, mock_init, mock_auth):
+def test_execute_calls_upload(
+    mock_args, mock_exists, mock_getsize, mock_wait, mock_init, mock_auth
+):
     uploader = UploadVideo()
+    mock_init.return_value = "video123"
     mock_args.return_value = mock.Mock(
         file="file.mp4",
         title="t",
@@ -53,8 +57,10 @@ def test_execute_calls_upload(mock_args, mock_exists, mock_init, mock_auth):
         category="22",
         privacyStatus="public",
     )
-    uploader.execute("file.mp4", "t", "d", "22", ["kw1", "kw2"], "public")
+    video_id = uploader.execute("file.mp4", "t", "d", "22", ["kw1", "kw2"], "public")
     assert mock_init.called
+    assert mock_wait.called
+    assert video_id == "video123"
 
 
 @mock.patch("lambdas.youtube.upload_video.run_flow")
@@ -117,5 +123,43 @@ def test_execute_fails_if_file_missing(mock_exists, mock_argparser):
     mock_args.file = "missing.mp4"
     mock_argparser.parse_args.return_value = mock_args
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(ValueError):
         uploader.execute("missing.mp4", "Title", "Desc", "22", ["tag"], "public")
+
+
+def test_wait_for_processing_succeeds():
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {
+                "processingDetails": {"processingStatus": "succeeded"},
+                "status": {"uploadStatus": "processed"},
+            }
+        ]
+    }
+
+    uploader.wait_for_processing(
+        youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
+    )
+
+
+def test_wait_for_processing_fails_on_failed_status():
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {
+                "processingDetails": {
+                    "processingStatus": "failed",
+                    "processingFailureReason": "invalidFile",
+                },
+                "status": {"uploadStatus": "failed"},
+            }
+        ]
+    }
+
+    with pytest.raises(RuntimeError):
+        uploader.wait_for_processing(
+            youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
+        )
