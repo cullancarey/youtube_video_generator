@@ -1,112 +1,114 @@
-# YouTube Quote Video Generator + Tweet Bot
+# YouTube Video Generator + Tweet Bot
 
-This project automates the generation of short YouTube quote videos using content scraped from Reddit and then tweets about the uploaded video. It's fully serverless, modular, and containerized using AWS Lambda + Docker, with Terraform-managed infrastructure and GitHub Actions for CI/CD.
+Serverless automation that:
 
----
+1. Generates a quote video from Reddit content.
+2. Uploads it to YouTube.
+3. Tweets the newest channel video on a schedule.
 
-## 🎥 Overview
+The stack is AWS Lambda (container image), ECR, S3, SSM Parameter Store, Terraform, and GitHub Actions.
 
-1. **YouTube Lambda**:
-   - Scrapes Reddit quotes
-   - Converts them to speech using `gTTS`
-   - Downloads relevant images
-   - Creates a video with `ffmpeg`
-   - Uploads the final video to YouTube
+## Components
 
-2. **Tweet Lambda**:
-   - Runs on a separate schedule
-   - Pulls the latest uploaded video from YouTube
-   - Posts a tweet using credentials stored in SSM
+- YouTube Lambda in lambdas/youtube:
+   - Scrapes latest safe post from r/quotes.
+   - Generates narration with gTTS.
+   - Downloads images.
+   - Renders MP4 using ffmpeg.
+   - Uploads and verifies YouTube processing status before reporting success.
+- Tweet Lambda in lambdas/tweet:
+   - Reads latest uploaded video from your YouTube channel.
+   - Builds hashtags from title and description.
+   - Publishes a tweet using X API credentials.
+- Infra in terraform:
+   - ECR repositories for both Lambda images.
+   - Lambda functions and IAM roles.
+   - S3 bucket for OAuth artifacts.
+   - EventBridge schedules.
 
----
+## Runtime And Scheduling
 
-## 🏐 Architecture
+- Runtime: Python 3.13 Lambda base images.
+- YouTube Lambda schedule: daily at 14:00 UTC.
+- Tweet Lambda schedule: 01:10, 05:10, 09:10, 13:10, 17:10, 21:10 UTC.
 
-- **AWS Lambda**: Two functions, each containerized using Docker
-- **Amazon ECR**: Stores Docker images for the Lambdas
-- **Amazon S3**: Stores temp and reusable content like `story.txt`, `story.mp3`, and `output.mp4`
-- **AWS Systems Manager (SSM)**: Stores secure parameters (Twitter/Reddit/YouTube credentials)
-- **Terraform**: Manages infrastructure including IAM, Lambda, CloudWatch, ECR, S3
-- **GitHub Actions**: Automates Docker builds and Terraform deployments
+## CI/CD
 
----
+Workflow: .github/workflows/deploy-docker.yml
 
-## 🚀 Deployment Flow
+On push to main:
 
-1. Push to `main` triggers GitHub Actions
-2. Actions:
-   - Build Docker images for each Lambda
-   - Push them to ECR
-   - Run `terraform apply` using updated image URIs
+1. Build and push tweet image with build_and_push_tweet.sh.
+2. Build and push youtube image with build_and_push_youtube.sh.
+3. Run terraform init, fmt, validate, plan.
+4. Run terraform apply only when commit message contains [tf-apply].
 
----
+Required GitHub environment variables (production):
 
-## 📚 File Structure
+- ACCOUNT_ID
+- REGION
+- DEPLOYMENT_ROLE
 
-```
-.
-├── lambdas/
-│   ├── tweet/
-│   │   ├── Dockerfile
-│   │   ├── tweet_lambda_requirements.txt
-│   │   ├── tweet_lambda_requirements-dev.txt
-│   │   └── tweet_youtube_video.py
-│   └── youtube/
-│       ├── Dockerfile
-│       ├── youtube_lambda_requirements.txt
-│       ├── youtube_lambda_requirements-dev.txt
-│       ├── youtube_video_generator.py
-│       └── upload_video.py
-├── ffmpeg                 # Static ffmpeg binary
-├── tests/                 # Unit tests
-├── terraform/             # All .tf files
-├── build_and_push_*.sh    # Docker build scripts
-├── run-tests.sh           # Local test runner
-```
+## Local Development
 
----
+Create virtual environments:
 
-## ⚙️ Local Development
-
-### Setup
 ```bash
-# Activate venv for YouTube Lambda\python3 -m venv venv-youtube
+python3 -m venv venv-youtube
 source venv-youtube/bin/activate
 pip install -r lambdas/youtube/youtube_lambda_requirements-dev.txt
+deactivate
 
-# Or activate venv for Tweet Lambda
 python3 -m venv venv-tweet
 source venv-tweet/bin/activate
 pip install -r lambdas/tweet/tweet_lambda_requirements-dev.txt
+deactivate
 ```
 
-### Testing
+Run tests with dependency install mode:
+
+```bash
+./run-tests.sh install
+```
+
+Run tests with dependency upgrade mode (default):
+
 ```bash
 ./run-tests.sh
 ```
-This script will:
-- Update outdated packages
-- Freeze them to dev requirements
-- Run pytest for all test suites
 
-### Regenerate production requirements
+Regenerate production requirements from dev lock files:
+
 ```bash
-python lambdas/youtube/generate_youtube_requirements.py
-python lambdas/tweet/generate_tweet_requirements.py
+python generate_youtube_requirements.py
+python generate_tweet_requirements.py
 ```
 
----
+## Secrets And Config
 
-## 📅 Scheduling
-- **YouTube Lambda**: Daily @ 2:00 PM UTC
-- **Tweet Lambda**: Every 4 hours @ :10 past the hour
-- Triggered by CloudWatch Event Rules
+Parameters expected in SSM Parameter Store:
 
----
+- Reddit:
+   - reddit_client_id
+   - reddit_client_secret
+   - reddit_user_agent
+   - reddit_username
+   - reddit_password
+- Twitter/X:
+   - twitter_api_key
+   - twitter_api_key_secret
+   - twitter_access_token
+   - twitter_access_token_secret
 
-## 🚧 Future Enhancements
-- Slack alerting on failures
-- Enhanced image scraping with real APIs
-- Retry logic and dead letter queues
-- SHA-based image tagging instead of `:latest`
-- Split shared Python logic into its own layer
+OAuth files expected in S3 bucket youtube-uploader-bucket:
+
+- client_secrets.json
+- youtube_video_generator.py-oauth2.json
+- tweet_youtube_video.py-oauth2.json
+
+## Docs
+
+- lambdas/README.md
+- lambdas/youtube/README.md
+- lambdas/tweet/README.md
+- terraform/README.md
