@@ -152,9 +152,17 @@ class UploadVideo:
                 time.sleep(sleep_time)
 
     def wait_for_processing(
-        self, youtube, video_id, timeout_seconds=600, poll_interval_seconds=10
+        self,
+        youtube,
+        video_id,
+        timeout_seconds=600,
+        poll_interval_seconds=10,
+        max_empty_polls=3,
     ):
         start_time = time.time()
+        empty_polls = 0
+        last_processing_status = None
+        last_upload_status = None
 
         while True:
             try:
@@ -175,9 +183,29 @@ class UploadVideo:
                 raise
             items = response.get("items", [])
             if not items:
-                raise RuntimeError(
-                    f"Uploaded video was not found by YouTube API: {video_id}"
+                empty_polls += 1
+                logger.warning(
+                    "YouTube status check returned no items for %s (attempt %d/%d).",
+                    video_id,
+                    empty_polls,
+                    max_empty_polls,
                 )
+                if empty_polls >= max_empty_polls:
+                    raise RuntimeError(
+                        f"Uploaded video was not found by YouTube API after {max_empty_polls} checks: {video_id}. "
+                        f"last_processing_status={last_processing_status}, last_upload_status={last_upload_status}"
+                    )
+
+                if time.time() - start_time > timeout_seconds:
+                    raise TimeoutError(
+                        f"Timed out waiting for YouTube processing for video {video_id}. "
+                        f"last_processing_status={last_processing_status}, last_upload_status={last_upload_status}"
+                    )
+
+                time.sleep(poll_interval_seconds)
+                continue
+
+            empty_polls = 0
 
             item = items[0]
             processing_details = item.get("processingDetails", {})
@@ -186,6 +214,8 @@ class UploadVideo:
             processing_status = processing_details.get("processingStatus")
             failure_reason = processing_details.get("processingFailureReason")
             upload_status = status_details.get("uploadStatus")
+            last_processing_status = processing_status
+            last_upload_status = upload_status
 
             logger.info(
                 "YouTube processing status for %s: processing=%s upload=%s",

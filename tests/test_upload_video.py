@@ -161,3 +161,50 @@ def test_wait_for_processing_fails_on_failed_status():
         uploader.wait_for_processing(
             youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
         )
+
+
+def test_wait_for_processing_tolerates_transient_empty_items():
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.side_effect = [
+        {
+            "items": [
+                {
+                    "processingDetails": {"processingStatus": "processing"},
+                    "status": {"uploadStatus": "uploaded"},
+                }
+            ]
+        },
+        {"items": []},
+        {
+            "items": [
+                {
+                    "processingDetails": {"processingStatus": "succeeded"},
+                    "status": {"uploadStatus": "processed"},
+                }
+            ]
+        },
+    ]
+
+    uploader.wait_for_processing(
+        youtube,
+        "video123",
+        timeout_seconds=1,
+        poll_interval_seconds=0,
+        max_empty_polls=3,
+    )
+
+
+def test_wait_for_processing_fails_after_repeated_empty_items():
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {"items": []}
+
+    with pytest.raises(RuntimeError):
+        uploader.wait_for_processing(
+            youtube,
+            "video123",
+            timeout_seconds=1,
+            poll_interval_seconds=0,
+            max_empty_polls=2,
+        )
