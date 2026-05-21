@@ -11,12 +11,20 @@ def test_get_authenticated_service(mock_build, mock_flow, mock_storage):
     flow = mock.Mock()
     mock_flow.return_value = flow
     creds = mock.Mock(invalid=False)
+    creds.scopes = [
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly",
+    ]
     mock_storage.return_value.get.return_value = creds
 
     uploader = UploadVideo()
     result = uploader.get_authenticated_service(args=[])
     assert result == mock_build.return_value
     mock_build.assert_called_once()
+    assert mock_flow.call_args.kwargs["scope"] == [
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly",
+    ]
 
 
 @mock.patch("lambdas.youtube.upload_video.MediaFileUpload")
@@ -74,6 +82,10 @@ def test_get_authenticated_service_invalid_creds(
 
     mock_creds = mock.Mock(spec=OAuth2Credentials)
     mock_creds.invalid = True
+    mock_creds.scopes = [
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly",
+    ]
     mock_storage.return_value.get.return_value = mock_creds
     mock_run_flow.return_value = mock_creds
 

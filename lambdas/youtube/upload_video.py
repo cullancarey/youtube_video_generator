@@ -17,6 +17,11 @@ from oauth2client.tools import argparser, run_flow
 logger = logging.getLogger()
 logger.setLevel("INFO")
 
+REQUIRED_YOUTUBE_SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
+
 
 class UploadVideo:
     def validate_video_file(self, file_path):
@@ -36,7 +41,7 @@ class UploadVideo:
         logger.info("Authenticating YouTube API client.")
         flow = flow_from_clientsecrets(
             client_secrets_file,
-            scope="https://www.googleapis.com/auth/youtube.upload",
+            scope=REQUIRED_YOUTUBE_SCOPES,
             message=(
                 f"Missing OAuth configuration in {client_secrets_file}. "
                 "Populate this file with your credentials from the Google API Console."
@@ -48,6 +53,25 @@ class UploadVideo:
         if credentials is None or credentials.invalid:
             logger.info("OAuth credentials missing or invalid. Running auth flow.")
             credentials = run_flow(flow, storage, args)
+
+        # Existing token files can be valid but missing newly required scopes.
+        creds_scopes = getattr(credentials, "scopes", None)
+        if isinstance(creds_scopes, str):
+            creds_scopes = creds_scopes.split()
+        elif isinstance(creds_scopes, (list, tuple, set, frozenset)):
+            creds_scopes = list(creds_scopes)
+        else:
+            creds_scopes = []
+        creds_scopes = set(creds_scopes)
+        missing_scopes = [
+            scope for scope in REQUIRED_YOUTUBE_SCOPES if scope not in creds_scopes
+        ]
+        if missing_scopes:
+            raise PermissionError(
+                "OAuth token is missing required YouTube scopes. "
+                f"Missing: {missing_scopes}. Re-authorize and upload a refreshed "
+                "youtube_video_generator.py-oauth2.json to S3."
+            )
 
         logger.info("Successfully authenticated with YouTube API.")
         return build("youtube", "v3", http=credentials.authorize(httplib2.Http()))
@@ -131,11 +155,22 @@ class UploadVideo:
         start_time = time.time()
 
         while True:
-            response = (
-                youtube.videos()
-                .list(part="processingDetails,status", id=video_id)
-                .execute()
-            )
+            try:
+                response = (
+                    youtube.videos()
+                    .list(part="processingDetails,status", id=video_id)
+                    .execute()
+                )
+            except HttpError as err:
+                if err.resp.status == 403 and b"insufficientPermissions" in getattr(
+                    err, "content", b""
+                ):
+                    raise PermissionError(
+                        "YouTube processing check needs readonly scope. Re-authorize "
+                        "youtube_video_generator.py-oauth2.json with both youtube.upload "
+                        "and youtube.readonly scopes, then upload it to S3."
+                    ) from err
+                raise
             items = response.get("items", [])
             if not items:
                 raise RuntimeError(

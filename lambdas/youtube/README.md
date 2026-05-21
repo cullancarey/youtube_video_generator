@@ -38,6 +38,11 @@ The uploader now verifies:
 - SSM params: reddit_client_id, reddit_client_secret, reddit_user_agent, reddit_username, reddit_password
 - S3 bucket: youtube-uploader-bucket
 - S3 objects: client_secrets.json, youtube_video_generator.py-oauth2.json
+- OAuth scopes required in youtube_video_generator.py-oauth2.json:
+	- https://www.googleapis.com/auth/youtube.upload
+	- https://www.googleapis.com/auth/youtube.readonly
+
+If a token was created before readonly scope was required, regenerate the OAuth token and replace the S3 object.
 
 ## Local Run Tips
 
