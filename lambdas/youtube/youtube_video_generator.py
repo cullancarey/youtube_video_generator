@@ -2,10 +2,12 @@
 
 import praw
 import os
+import re
 import subprocess
 import shlex
 import shutil
 import logging
+from urllib.parse import quote_plus
 from gtts import gTTS
 import requests
 from mutagen.mp3 import MP3
@@ -19,24 +21,25 @@ logger = logging.getLogger()
 logger.setLevel("INFO")
 
 
-def get_image_urls(query):
-    try:
-        url = f"https://www.google.be/search?q={query}&tbm=isch"
-        response = requests.get(url, timeout=60)
-        if response.status_code == 200:
-            logger.info(f"Fetched image URLs for query: {query}")
-            return response.text
-        logger.error(f"Failed to fetch image URLs. Status: {response.status_code}")
-    except requests.Timeout:
-        logger.error(f"Timeout fetching image URLs for query: {query}")
-    except Exception as e:
-        logger.exception(f"Exception fetching image URLs for query: {query}: {e}")
-    return None
+def _extract_keywords(text, max_keywords=3):
+    """Extract short alphanumeric keywords suitable for an image search query."""
+    words = re.findall(r"\b[a-zA-Z]{4,}\b", text)
+    stopwords = {"that", "this", "with", "have", "from", "they", "will", "your", "been"}
+    seen = set()
+    keywords = []
+    for w in words:
+        lw = w.lower()
+        if lw not in stopwords and lw not in seen:
+            seen.add(lw)
+            keywords.append(lw)
+        if len(keywords) >= max_keywords:
+            break
+    return keywords or ["inspiration"]
 
 
 def download_image(url):
     try:
-        response = requests.get(url, timeout=60)
+        response = requests.get(url, timeout=60, allow_redirects=True)
         if response.status_code == 200:
             return response.content
         logger.error(f"Failed to download image. Status: {response.status_code}")
@@ -45,6 +48,15 @@ def download_image(url):
     except Exception as e:
         logger.exception(f"Exception downloading image: {url}: {e}")
     return None
+
+
+def build_image_urls(text, num_images):
+    """Build Unsplash source URLs using keywords extracted from the quote text."""
+    keywords = _extract_keywords(text)
+    query = quote_plus(",".join(keywords))
+    base = f"https://source.unsplash.com/1280x720/?{query}"
+    # Append an index param so each URL is treated as a distinct request
+    return [f"{base}&sig={i}" for i in range(num_images)]
 
 
 def get_param(param_name):
@@ -126,9 +138,10 @@ def lambda_handler(event, context):
     try:
         audio = MP3("/tmp/story.mp3")
         num_images = max(1, int(audio.info.length))
-        raw_html = get_image_urls(text) or get_image_urls("coding with python")
-        raw_urls = raw_html.split('"') if raw_html else []
-        urls = [u.split(";s")[0] for u in raw_urls if "https://encrypted-" in u]
+        urls = build_image_urls(text, num_images)
+        logger.info(
+            f"Fetching {len(urls)} image(s) from Unsplash for text: {text[:80]}"
+        )
 
         saved = 0
         for url in urls:
