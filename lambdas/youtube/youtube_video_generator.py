@@ -156,24 +156,34 @@ def lambda_handler(event, context):
     try:
         frame_rate = max(0.1, audio.info.length / max(1, num_images))
         video_path = "/tmp/output.mp4"
+        concat_file = "/tmp/images_concat.txt"
 
         image_files = sorted(glob.glob("/tmp/images/image*"))
         if not image_files:
             raise RuntimeError("No image files found after downloading.")
 
-        # Let ffmpeg expand the glob pattern itself; no shell is required.
+        # Build concat input with explicit per-image durations so ffmpeg does not rely on glob support.
+        with open(concat_file, "w", encoding="utf-8") as f:
+            for image_file in image_files:
+                f.write(f"file '{image_file}'\n")
+                f.write(f"duration {frame_rate:.6f}\n")
+            # Repeat last image; ffmpeg concat demuxer ignores duration on final entry otherwise.
+            f.write(f"file '{image_files[-1]}'\n")
+
         command = [
             f"{os.getcwd()}/ffmpeg",
             "-y",
             "-hide_banner",
-            "-framerate",
-            f"1/{frame_rate}",
-            "-pattern_type",
-            "glob",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
             "-i",
-            "/tmp/images/image*",
+            concat_file,
             "-i",
             "/tmp/story.mp3",
+            "-vsync",
+            "vfr",
             "-c:v",
             "libx264",
             "-profile:v",
@@ -186,6 +196,8 @@ def lambda_handler(event, context):
             "18",
             "-vf",
             "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+            "-r",
+            "30",
             "-movflags",
             "+faststart",
             "-c:a",
@@ -222,6 +234,7 @@ def lambda_handler(event, context):
     try:
         for path in [
             "/tmp/images",
+            "/tmp/images_concat.txt",
             "/tmp/story.txt",
             "/tmp/story.mp3",
             "/tmp/output.mp4",
