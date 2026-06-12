@@ -36,8 +36,7 @@ def generate_title_and_description(text: str, author: str, url: str):
     date_str = datetime.now().strftime("%B %d, %Y")
 
     title = f"{key_phrase} — {date_str} | Quote of the Day"
-    description = textwrap.dedent(
-        f"""
+    description = textwrap.dedent(f"""
     ✨ {key_phrase} ✨
     Daily inspiration from r/quotes — shared by u/{author}
 
@@ -46,37 +45,13 @@ def generate_title_and_description(text: str, author: str, url: str):
     💬 Comment below your thoughts — and subscribe for more daily quotes!
 
     #quotes #motivation #inspiration #reddit #dailyquote #python
-    """
-    ).strip()
+    """).strip()
 
     return title, description
-
-
-# def create_thumbnail(text: str, output_path: str = "/tmp/thumbnail.jpg"):
-#     """Generate a simple thumbnail with the quote text."""
-#     width, height = 1280, 720
-#     img = Image.new("RGB", (width, height), color=(20, 20, 20))
-#     draw = ImageDraw.Draw(img)
-
-#     font = ImageFont.truetype(
-#         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48
-#     )
-#     lines = textwrap.wrap(text, width=25)[:3]
-#     y_text = height // 3
-
-#     for line in lines:
-#         text_w, text_h = draw.textsize(line, font=font)
-#         draw.text(((width - text_w) / 2, y_text), line, font=font, fill=(255, 255, 255))
-#         y_text += text_h + 10
-
-#     img.save(output_path)
-#     return output_path
 
 
 def optimize_metadata(text, author, url):
     """Full metadata generation routine."""
     title, description = generate_title_and_description(text, author, url)
     keywords = extract_keywords_from_text(text)
-    # thumbnail = create_thumbnail(text)
-    thumbnail = None
-    return title, description, keywords, thumbnail
+    return title, description, keywords, None

@@ -1,7 +1,5 @@
 import logging
 import sys
-import pytest
-import requests
 from unittest import mock
 from lambdas.youtube import youtube_video_generator
 

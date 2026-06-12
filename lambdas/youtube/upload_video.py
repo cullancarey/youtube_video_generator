@@ -36,7 +36,7 @@ class UploadVideo:
                 f"Video file is too small to be valid ({size} bytes): {file_path}"
             )
 
-    def get_authenticated_service(self, args):
+    def get_authenticated_service(self):
         httplib2.RETRIES = 1
         client_secrets_file = "/tmp/client_secrets.json"
         logger.info("Authenticating YouTube API client.")
@@ -282,7 +282,7 @@ class UploadVideo:
 
         self.validate_video_file(args.file)
 
-        youtube = self.get_authenticated_service(args)
+        youtube = self.get_authenticated_service()
         try:
             video_id = self.initialize_upload(youtube, args)
             self.wait_for_processing(youtube, video_id)

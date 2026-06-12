@@ -1,7 +1,6 @@
 import subprocess
 import argparse
 import sys
-from pathlib import Path
 
 
 def run_check(source_dir, requirements_file, ignore_paths):

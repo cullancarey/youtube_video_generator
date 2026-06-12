@@ -12,7 +12,6 @@ import requests
 from mutagen.mp3 import MP3
 import boto3
 
-# from .upload_video import UploadVideo # for local testing
 from metadata_optimizer import optimize_metadata
 from upload_video import UploadVideo
 

@@ -18,7 +18,7 @@ def test_get_authenticated_service(mock_build, mock_flow, mock_storage):
     mock_storage.return_value.get.return_value = creds
 
     uploader = UploadVideo()
-    result = uploader.get_authenticated_service(args=[])
+    result = uploader.get_authenticated_service()
     assert result == mock_build.return_value
     mock_build.assert_called_once()
     assert mock_flow.call_args.kwargs["scope"] == [
@@ -80,8 +80,7 @@ def test_get_authenticated_service_invalid_creds(
     mock_storage.return_value.get.return_value = mock_creds
     mock_run_flow.return_value = mock_creds
 
-    args = mock.Mock()
-    uploader.get_authenticated_service(args)
+    uploader.get_authenticated_service()
 
     mock_flow.assert_called_once()
     mock_run_flow.assert_called_once()
