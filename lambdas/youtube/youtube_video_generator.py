@@ -122,9 +122,7 @@ def lambda_handler(event, context):
         audio = MP3("/tmp/story.mp3")
         num_images = max(1, int(audio.info.length))
         urls = build_image_urls(text, num_images)
-        logger.info(
-            f"Fetching {len(urls)} image(s) from Unsplash for text: {text[:80]}"
-        )
+        logger.info(f"Fetching {len(urls)} image(s) from Picsum for text: {text[:80]}")
 
         saved = 0
         for url in urls:
@@ -159,28 +157,21 @@ def lambda_handler(event, context):
         frame_rate = max(0.1, audio.info.length / max(1, num_images))
         video_path = "/tmp/output.mp4"
 
-        # Use glob.glob() to expand the pattern in Python instead of relying on shell expansion
         image_files = sorted(glob.glob("/tmp/images/image*"))
         if not image_files:
             raise RuntimeError("No image files found after downloading.")
 
-        # Create a concat demuxer file to avoid shell escaping issues
-        concat_file = "/tmp/concat.txt"
-        with open(concat_file, "w") as f:
-            for img_file in image_files:
-                f.write(f"file '{img_file}'\n")
-
-        # Build command as a list to avoid shell metacharacter interpretation
+        # Let ffmpeg expand the glob pattern itself; no shell is required.
         command = [
             f"{os.getcwd()}/ffmpeg",
             "-y",
             "-hide_banner",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
+            "-framerate",
+            f"1/{frame_rate}",
+            "-pattern_type",
+            "glob",
             "-i",
-            concat_file,
+            "/tmp/images/image*",
             "-i",
             "/tmp/story.mp3",
             "-c:v",
@@ -194,7 +185,7 @@ def lambda_handler(event, context):
             "-crf",
             "18",
             "-vf",
-            f"fps=1/{frame_rate},scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+            "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
             "-movflags",
             "+faststart",
             "-c:a",
