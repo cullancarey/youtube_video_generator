@@ -95,12 +95,13 @@ def lambda_handler(event, context):
 
     # Step 3: Fetch and write Reddit content
     try:
-        author = url = ""
+        author = reddit_url = ""
         with open("/tmp/story.txt", "w", encoding="utf-8") as f:
             for post in reddit.subreddit("quotes").new(limit=1):
                 if not post.over_18:
                     f.write(f"{post.title}\n{post.selftext}")
-                    author, url = post.author, post.url
+                    author = str(post.author)
+                    reddit_url = f"https://www.reddit.com{post.permalink}"
         logger.info("Reddit content written to /tmp/story.txt.")
     except Exception as e:
         logger.critical(f"Failed to fetch or write Reddit post: {e}", exc_info=True)
@@ -125,10 +126,10 @@ def lambda_handler(event, context):
         logger.info(f"Fetching {len(urls)} image(s) from Picsum for text: {text[:80]}")
 
         saved = 0
-        for url in urls:
+        for image_url in urls:
             if saved >= num_images:
                 break
-            image = download_image(url)
+            image = download_image(image_url)
             if not image:
                 continue
             # Validate the downloaded bytes are a real JPEG or PNG before saving,
@@ -138,7 +139,7 @@ def lambda_handler(event, context):
             elif image[:8] == b"\x89PNG\r\n\x1a\n":
                 ext = "png"
             else:
-                logger.warning("Skipping non-JPEG/PNG image from %s", url)
+                logger.warning("Skipping non-JPEG/PNG image from %s", image_url)
                 continue
             with open(f"/tmp/images/image{saved}.{ext}", "wb") as f:
                 f.write(image)
@@ -220,7 +221,9 @@ def lambda_handler(event, context):
 
     # Step 7: Upload
     try:
-        title, description, keywords, thumbnail = optimize_metadata(text, author, url)
+        title, description, keywords, thumbnail = optimize_metadata(
+            text, author, reddit_url
+        )
         uploader = UploadVideo()
         video_id = uploader.execute(
             video_path, title, description, "22", keywords, "public"
