@@ -130,11 +130,29 @@ def lambda_handler(event, context):
         raw_urls = raw_html.split('"') if raw_html else []
         urls = [u.split(";s")[0] for u in raw_urls if "https://encrypted-" in u]
 
-        for idx in range(min(num_images, len(urls))):
-            image = download_image(urls[idx])
-            if image:
-                with open(f"/tmp/images/image{idx}.jpg", "wb") as f:
-                    f.write(image)
+        saved = 0
+        for url in urls:
+            if saved >= num_images:
+                break
+            image = download_image(url)
+            if not image:
+                continue
+            # Validate the downloaded bytes are a real JPEG or PNG before saving,
+            # so ffmpeg never receives a corrupt/WebP/AVIF file mislabeled as .jpg.
+            if image[:3] == b"\xff\xd8\xff":
+                ext = "jpg"
+            elif image[:8] == b"\x89PNG\r\n\x1a\n":
+                ext = "png"
+            else:
+                logger.warning("Skipping non-JPEG/PNG image from %s", url)
+                continue
+            with open(f"/tmp/images/image{saved}.{ext}", "wb") as f:
+                f.write(image)
+            saved += 1
+
+        if saved == 0:
+            raise RuntimeError("No valid images were downloaded for video generation.")
+        num_images = saved
         logger.info(f"{num_images} image(s) prepared.")
     except Exception as e:
         logger.critical(f"Image processing failed: {e}", exc_info=True)
@@ -146,8 +164,8 @@ def lambda_handler(event, context):
         video_path = "/tmp/output.mp4"
         command = (
             f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} "
-            f"-pattern_type glob -i '/tmp/images/*.jpg' "
-            f"-i /tmp/story.mp3 -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 18 "
+            f"-pattern_type glob -i '/tmp/images/image*' "
+            f"-i /tmp/story.mp3 -c:v libx264 -profile:v main -level 4.0 -pix_fmt yuv420p -crf 18 "
             f"-vf scale=1280:720:force_original_aspect_ratio=decrease,"
             f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -movflags +faststart "
             f"-c:a aac -b:a 192k -shortest {video_path}"

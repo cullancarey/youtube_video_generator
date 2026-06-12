@@ -163,6 +163,7 @@ class UploadVideo:
         empty_polls = 0
         last_processing_status = None
         last_upload_status = None
+        video_seen = False  # track whether we ever received items for this video
 
         while True:
             try:
@@ -191,6 +192,17 @@ class UploadVideo:
                     max_empty_polls,
                 )
                 if empty_polls >= max_empty_polls:
+                    if video_seen:
+                        # Video was visible earlier but has now vanished — YouTube
+                        # abandoned processing and removed the video from its API.
+                        raise RuntimeError(
+                            f"YouTube abandoned processing for video {video_id} "
+                            f"(video disappeared from API after being visible). "
+                            f"last_processing_status={last_processing_status}, "
+                            f"last_upload_status={last_upload_status}. "
+                            "This usually means the uploaded file was rejected by "
+                            "YouTube's transcoder. Check the video file for corruption."
+                        )
                     raise RuntimeError(
                         f"Uploaded video was not found by YouTube API after {max_empty_polls} checks: {video_id}. "
                         f"last_processing_status={last_processing_status}, last_upload_status={last_upload_status}"
@@ -205,6 +217,7 @@ class UploadVideo:
                 time.sleep(poll_interval_seconds)
                 continue
 
+            video_seen = True
             empty_polls = 0
 
             item = items[0]
