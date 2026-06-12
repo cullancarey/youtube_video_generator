@@ -1,0 +1,26 @@
+[project]
+name = "youtube-video-generator"
+version = "0.1.0"
+description = "Serverless YouTube quote video generator"
+requires-python = ">=3.13"
+dependencies = [
+  "boto3==1.40.70",
+  "google-api-python-client==2.187.0",
+  "gTTS==2.5.4",
+  "mutagen==1.47.0",
+  "oauth2client==4.1.3",
+  "praw==7.8.2",
+  "requests==2.34.2",
+  "requests-oauthlib==2.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pip-check-reqs==2.5.5",
+  "pipdeptree==2.29.0",
+  "pytest==9.0.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -7,6 +7,8 @@ Serverless automation that:
 
 The stack is AWS Lambda (container image), ECR, S3, SSM Parameter Store, Terraform, and GitHub Actions.
 
+Python package management uses uv (https://github.com/astral-sh/uv).
+
 ## Components
 
 - YouTube Lambda in lambdas/youtube:
@@ -44,13 +46,10 @@ Required GitHub environment variables (production):
 
 ## Local Development
 
-Create virtual environment:
+Install dependencies with uv:
 
 ```bash
-python3 -m venv venv-youtube
-source venv-youtube/bin/activate
-pip install -r lambdas/youtube/youtube_lambda_requirements-dev.txt
-deactivate
+uv sync --group dev --no-install-project
 ```
 
 Run tests with dependency install mode:
@@ -69,6 +68,12 @@ Regenerate production requirements from dev lock file:
 
 ```bash
 python generate_youtube_requirements.py
+```
+
+Upgrade dependencies and refresh lock + requirements:
+
+```bash
+./run-tests.sh upgrade
 ```
 
 ## Secrets And Config

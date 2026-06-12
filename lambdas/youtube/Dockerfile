@@ -1,8 +1,11 @@
 FROM public.ecr.aws/lambda/python:3.13
 
-# Install Python dependencies into Lambda task root
-COPY lambdas/youtube/youtube_lambda_requirements.txt .
-RUN pip install --no-cache-dir -r youtube_lambda_requirements.txt --target "${LAMBDA_TASK_ROOT}"
+# Install Python dependencies from uv metadata into Lambda task root
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir uv \
+ && uv export --format requirements.txt --frozen --no-dev --no-emit-project --no-hashes --output-file /tmp/requirements.txt \
+ && pip install --no-cache-dir -r /tmp/requirements.txt --target "${LAMBDA_TASK_ROOT}" \
+ && rm -f /tmp/requirements.txt
 
 # Copy function code
 COPY lambdas/youtube/ ${LAMBDA_TASK_ROOT}

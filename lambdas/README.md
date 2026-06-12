@@ -25,10 +25,9 @@ Use the root test runner:
 Or run targeted tests:
 
 ```bash
-source venv-youtube/bin/activate
-PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_upload_video.py
-PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_youtube_video_generator.py
-deactivate
+uv sync --group dev --no-install-project
+PYTHONPATH=.:$PWD/lambdas/youtube .venv/bin/python -m pytest tests/test_upload_video.py
+PYTHONPATH=.:$PWD/lambdas/youtube .venv/bin/python -m pytest tests/test_youtube_video_generator.py
 ```
 
 ## Shared Notes

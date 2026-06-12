@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 # Adjust paths for new structure
 base_dir = Path(__file__).parent / "lambdas" / "youtube"
@@ -17,8 +18,9 @@ dev_only_deps = {
     "pip-check-reqs",
     "setuptools",
     "wheel",
-    "Pygments",
+    "pygments",
     "packaging",
+    "pip",
     "pipdeptree",
     "urllib3",
     "six",
@@ -34,7 +36,12 @@ def regenerate_prod_requirements(dev_path: Path, prod_path: Path, exclude_deps: 
     prod_lines = []
     for line in lines:
         line = line.strip()
-        if not line or line.startswith("#") or line.startswith("-r"):
+        if (
+            not line
+            or line.startswith("#")
+            or line.startswith("-r")
+            or "==" not in line
+        ):
             continue
         pkg_name = line.split("==")[0].lower()
         if pkg_name not in exclude_deps:
@@ -49,5 +56,27 @@ def regenerate_prod_requirements(dev_path: Path, prod_path: Path, exclude_deps: 
     )
 
 
+def export_dev_requirements(dev_path: Path):
+    subprocess.run(
+        [
+            "uv",
+            "export",
+            "--format",
+            "requirements.txt",
+            "--group",
+            "dev",
+            "--no-emit-project",
+            "--no-header",
+            "--no-annotate",
+            "--no-hashes",
+            "--output-file",
+            str(dev_path),
+        ],
+        check=True,
+    )
+    print(f"✅ Exported {dev_path.name} from uv.lock")
+
+
 if __name__ == "__main__":
+    export_dev_requirements(dev_filename)
     regenerate_prod_requirements(dev_filename, prod_filename, dev_only_deps)

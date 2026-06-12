@@ -14,20 +14,16 @@ logging.basicConfig(
 )
 
 
-@mock.patch("requests.get")
-def test_get_image_urls_success(mock_get):
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.text = "html content"
-    result = youtube_video_generator.get_image_urls("python")
-    assert result == "html content"
-    mock_get.assert_called_once()
+def test_build_image_urls_count_and_shape():
+    urls = youtube_video_generator.build_image_urls("python quote", 3)
+    assert len(urls) == 3
+    assert all(u.startswith("https://picsum.photos/seed/") for u in urls)
 
 
-@mock.patch("requests.get")
-def test_get_image_urls_timeout(mock_get):
-    mock_get.side_effect = requests.Timeout
-    result = youtube_video_generator.get_image_urls("python")
-    assert result is None
+def test_build_image_urls_deterministic_for_same_text():
+    urls_one = youtube_video_generator.build_image_urls("same text", 2)
+    urls_two = youtube_video_generator.build_image_urls("same text", 2)
+    assert urls_one == urls_two
 
 
 @mock.patch("requests.get")
@@ -61,23 +57,30 @@ def test_file_setup_downloads(mock_resource):
 @mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
 @mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.get_image_urls",
-    return_value="https://encrypted-image.jpg",
+    "lambdas.youtube.youtube_video_generator.build_image_urls",
+    return_value=["https://picsum.photos/seed/1/1280/720"],
 )
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.download_image", return_value=b"bytes"
+    "lambdas.youtube.youtube_video_generator.download_image",
+    return_value=b"\xff\xd8\xff\xe0mockjpg",
 )
 @mock.patch("lambdas.youtube.youtube_video_generator.gTTS")
 @mock.patch("lambdas.youtube.youtube_video_generator.MP3")
 @mock.patch("lambdas.youtube.youtube_video_generator.subprocess.run")
+@mock.patch("lambdas.youtube.youtube_video_generator.os.path.exists", return_value=True)
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.os.path.getsize", return_value=2048
+)
 @mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
 def test_lambda_handler_minimal_path(
     mock_file_setup,
+    mock_getsize,
+    mock_exists,
     mock_subproc,
     mock_mp3,
     mock_gtts,
     mock_download,
-    mock_img_urls,
+    mock_build_urls,
     mock_reddit,
     mock_param,
     mock_uploader,
@@ -93,6 +96,7 @@ def test_lambda_handler_minimal_path(
     mock_post.selftext = "Text"
     mock_post.author = "author"
     mock_post.url = "url"
+    mock_post.permalink = "/r/quotes/comments/abc123/test"
     mock_reddit.return_value.subreddit.return_value.new.return_value = [mock_post]
 
     youtube_video_generator.lambda_handler({}, {})

@@ -11,7 +11,7 @@ Creates a daily video from Reddit quotes and uploads it to YouTube.
 1. Download OAuth and working files from S3 into /tmp.
 2. Read Reddit credentials from SSM and fetch latest safe post from r/quotes.
 3. Create narration audio with gTTS.
-4. Download image candidates from Google image search response.
+4. Download seeded images from Picsum.
 5. Render MP4 using ffmpeg.
 6. Upload to YouTube and poll processing status until success or failure.
 7. Clean up /tmp artifacts.
@@ -46,15 +46,15 @@ If a token was created before readonly scope was required, regenerate the OAuth 
 
 ## Local Run Tips
 
-Activate the YouTube virtual environment first:
+Sync dependencies first:
 
 ```bash
-source venv-youtube/bin/activate
+uv sync --group dev --no-install-project
 ```
 
 Run tests:
 
 ```bash
-PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_upload_video.py
-PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_youtube_video_generator.py
+PYTHONPATH=.:$PWD/lambdas/youtube .venv/bin/python -m pytest tests/test_upload_video.py
+PYTHONPATH=.:$PWD/lambdas/youtube .venv/bin/python -m pytest tests/test_youtube_video_generator.py
 ```
