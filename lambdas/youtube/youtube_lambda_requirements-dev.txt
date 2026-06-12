@@ -11,7 +11,7 @@ google-auth-httplib2==0.2.1
 googleapis-common-protos==1.72.0
 gTTS==2.5.4
 httplib2==0.31.0
-idna==3.11
+idna==3.18
 iniconfig==2.3.0
 jmespath==1.0.1
 mutagen==1.47.0
@@ -24,13 +24,13 @@ praw==7.8.1
 prawcore==2.4.0
 proto-plus==1.26.1
 protobuf==6.33.5
-pyasn1==0.6.2
+pyasn1==0.6.3
 pyasn1_modules==0.4.2
-Pygments==2.19.2
+Pygments==2.20.0
 pyparsing==3.2.5
-pytest==9.0.0
+pytest==9.0.3
 python-dateutil==2.9.0.post0
-requests==2.32.5
+requests==2.34.2
 requests-oauthlib==2.0.0
 rsa==4.9.1
 s3transfer==0.14.0
@@ -38,6 +38,6 @@ setuptools==82.0.0
 six==1.17.0
 update-checker==0.18.0
 uritemplate==4.2.0
-urllib3==2.6.3
+urllib3==2.7.0
 websocket-client==1.9.0
 wheel==0.46.3
