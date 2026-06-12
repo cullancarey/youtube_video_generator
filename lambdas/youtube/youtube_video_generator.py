@@ -2,12 +2,11 @@
 
 import praw
 import os
-import re
+import hashlib
 import subprocess
 import shlex
 import shutil
 import logging
-from urllib.parse import quote_plus
 from gtts import gTTS
 import requests
 from mutagen.mp3 import MP3
@@ -19,22 +18,6 @@ from upload_video import UploadVideo
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
-
-
-def _extract_keywords(text, max_keywords=3):
-    """Extract short alphanumeric keywords suitable for an image search query."""
-    words = re.findall(r"\b[a-zA-Z]{4,}\b", text)
-    stopwords = {"that", "this", "with", "have", "from", "they", "will", "your", "been"}
-    seen = set()
-    keywords = []
-    for w in words:
-        lw = w.lower()
-        if lw not in stopwords and lw not in seen:
-            seen.add(lw)
-            keywords.append(lw)
-        if len(keywords) >= max_keywords:
-            break
-    return keywords or ["inspiration"]
 
 
 def download_image(url):
@@ -51,12 +34,12 @@ def download_image(url):
 
 
 def build_image_urls(text, num_images):
-    """Build Unsplash source URLs using keywords extracted from the quote text."""
-    keywords = _extract_keywords(text)
-    query = quote_plus(",".join(keywords))
-    base = f"https://source.unsplash.com/1280x720/?{query}"
-    # Append an index param so each URL is treated as a distinct request
-    return [f"{base}&sig={i}" for i in range(num_images)]
+    """Build Lorem Picsum URLs seeded from the quote text for reproducible variety."""
+    base_seed = int(hashlib.md5(text.encode()).hexdigest(), 16) % 1000
+    return [
+        f"https://picsum.photos/seed/{(base_seed + i) % 1000}/1280/720"
+        for i in range(num_images)
+    ]
 
 
 def get_param(param_name):
