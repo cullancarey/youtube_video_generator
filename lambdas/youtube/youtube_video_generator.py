@@ -2,9 +2,9 @@
 
 import praw
 import os
+import glob
 import hashlib
 import subprocess
-import shlex
 import shutil
 import logging
 from gtts import gTTS
@@ -158,16 +158,56 @@ def lambda_handler(event, context):
     try:
         frame_rate = max(0.1, audio.info.length / max(1, num_images))
         video_path = "/tmp/output.mp4"
-        command = (
-            f"{os.getcwd()}/ffmpeg -y -hide_banner -framerate 1/{frame_rate} "
-            f"-pattern_type glob -i '/tmp/images/image*' "
-            f"-i /tmp/story.mp3 -c:v libx264 -profile:v main -level 4.0 -pix_fmt yuv420p -crf 18 "
-            f"-vf scale=1280:720:force_original_aspect_ratio=decrease,"
-            f"pad=1280:720:(ow-iw)/2:(oh-ih)/2 -movflags +faststart "
-            f"-c:a aac -b:a 192k -shortest {video_path}"
-        )
 
-        result = subprocess.run(command, shell=True, capture_output=True)
+        # Use glob.glob() to expand the pattern in Python instead of relying on shell expansion
+        image_files = sorted(glob.glob("/tmp/images/image*"))
+        if not image_files:
+            raise RuntimeError("No image files found after downloading.")
+
+        # Create a concat demuxer file to avoid shell escaping issues
+        concat_file = "/tmp/concat.txt"
+        with open(concat_file, "w") as f:
+            for img_file in image_files:
+                f.write(f"file '{img_file}'\n")
+
+        # Build command as a list to avoid shell metacharacter interpretation
+        command = [
+            f"{os.getcwd()}/ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-framerate",
+            f"1/{frame_rate}",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            concat_file,
+            "-i",
+            "/tmp/story.mp3",
+            "-c:v",
+            "libx264",
+            "-profile:v",
+            "main",
+            "-level",
+            "4.0",
+            "-pix_fmt",
+            "yuv420p",
+            "-crf",
+            "18",
+            "-vf",
+            "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+            "-movflags",
+            "+faststart",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-shortest",
+            video_path,
+        ]
+
+        result = subprocess.run(command, capture_output=True)
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 1024:
