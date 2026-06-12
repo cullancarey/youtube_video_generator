@@ -20,6 +20,11 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
   memory_size = 512
 }
 
+resource "aws_cloudwatch_log_group" "youtube_video_generator_lambda" {
+  name              = "/aws/lambda/${aws_lambda_function.youtube_video_generator_lambda.function_name}"
+  retention_in_days = var.lambda_log_retention_days
+}
+
 resource "aws_iam_role" "iam_for_youtube_video_generator_lambda" {
   path = "/service-role/"
 
@@ -40,45 +45,71 @@ resource "aws_iam_role" "iam_for_youtube_video_generator_lambda" {
 POLICY
 }
 
-resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {
-  path   = "/service-role/"
-  policy = <<POLICY
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "AllowGetParameter",
-            "Effect": "Allow",
-            "Action": "ssm:GetParameter",
-            "Resource": [
-                "arn:aws:ssm:us-east-2:${local.account_id}:parameter/reddit_client_secret",
-                "arn:aws:ssm:us-east-2:${local.account_id}:parameter/reddit_username",
-                "arn:aws:ssm:us-east-2:${local.account_id}:parameter/reddit_password",
-                "arn:aws:ssm:us-east-2:${local.account_id}:parameter/reddit_user_agent",
-                "arn:aws:ssm:us-east-2:${local.account_id}:parameter/reddit_client_id"
-            ]
-        },
-        {
-            "Sid": "AllowCloudwatch",
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogStream",
-                "logs:PutLogEvents",
-                "logs:CreateLogGroup"
-            ],
-            "Resource": ["arn:aws:logs:us-east-2:${local.account_id}:log-group:/aws/lambda/${local.youtube_lambda}:*",
-                "arn:aws:logs:us-east-2:${local.account_id}:*"]
-        },
-        {
-            "Sid": "AllowS3",
-            "Effect": "Allow",
-            "Action": ["s3:GetObject", "s3:ListBucket"],
-            "Resource": "arn:aws:s3:::youtube-uploader-bucket/*"
-        }
+data "aws_iam_policy_document" "youtube_video_generator_lambda" {
+  statement {
+    sid    = "AllowGetParameter"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
     ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_client_secret",
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_username",
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_password",
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_user_agent",
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_client_id",
+    ]
+  }
+
+  statement {
+    sid    = "AllowCloudwatch"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+    resources = [
+      "${aws_cloudwatch_log_group.youtube_video_generator_lambda.arn}:*",
+    ]
+  }
+
+  statement {
+    sid    = "AllowCloudwatchCreateGroup"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:${var.aws_region}:${local.account_id}:*",
+    ]
+  }
+
+  statement {
+    sid    = "AllowS3ListBucket"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+    ]
+    resources = [
+      aws_s3_bucket.youtube_uploader_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "AllowS3GetObject"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+    ]
+    resources = [
+      "${aws_s3_bucket.youtube_uploader_bucket.arn}/*",
+    ]
+  }
 }
 
-POLICY
+resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {
+  path   = "/service-role/"
+  policy = data.aws_iam_policy_document.youtube_video_generator_lambda.json
 }
 
 resource "aws_iam_role_policy_attachment" "youtube_video_generator_lambda_attach" {

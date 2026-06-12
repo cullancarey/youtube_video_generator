@@ -18,7 +18,9 @@ This directory defines AWS infrastructure for the YouTube generator Lambda.
 - youtube_video_generator_lambda.tf: YouTube Lambda and IAM policy.
 - cloudwatch.tf: schedule and permission.
 - s3.tf: bucket, policy, public access block, lifecycle.
-- variables.tf: image tag variable used during plan/apply.
+- variables.tf: validated input variables for region, naming, schedule, retention, and image tag.
+- locals.tf: normalized naming and shared tagging conventions.
+- outputs.tf: key resource identifiers for integrations and automation.
 
 ## Apply Strategy In CI
 
@@ -38,12 +40,37 @@ From the terraform directory:
 terraform init -backend-config=backend.main.conf
 terraform fmt -check
 terraform validate
-terraform plan -var="youtube_image_tag=<tag>" -out=tfplan
+terraform plan \
+	-var="youtube_image_tag=<tag>" \
+	-var="environment=production" \
+	-var="aws_region=us-east-2" \
+	-out=tfplan
 terraform apply tfplan
 ```
 
+## Variables
+
+- youtube_image_tag (required): Docker tag to deploy.
+- environment: one of dev, staging, production.
+- aws_region: AWS region in standard format (for example us-east-2).
+- project_name: normalized for tagging and naming consistency.
+- youtube_lambda_name, youtube_bucket_name, youtube_ecr_repo_name: resource naming inputs.
+- youtube_schedule_expression: must start with cron( or rate(.
+- lambda_log_retention_days: must be an AWS-supported retention value.
+
+## Outputs
+
+- youtube_lambda_name
+- youtube_lambda_arn
+- youtube_lambda_role_arn
+- youtube_lambda_log_group_name
+- youtube_ecr_repository_name
+- youtube_ecr_repository_url
+- youtube_bucket_name
+- youtube_event_rule_arn
+
 ## Notes
 
-- Current provider region is set to us-east-2.
-- Lambda name and common locals are defined in locals.tf.
+- Provider region defaults to us-east-2 and can be overridden via var.aws_region.
+- Naming normalization and common tags are defined in locals.tf.
 - If new SSM parameters are introduced in code, IAM policy resources must be updated.

@@ -80,6 +80,6 @@ jobs:
       run: terraform plan -var="youtube_image_tag=${{ needs.build-youtube.outputs.image-tag }}" -out=tfplan --input=false
 
     - name: Terraform Apply
-      # if: contains(github.event.head_commit.message, '[tf-apply]')
+      if: contains(github.event.head_commit.message, '[tf-apply]')
       id: apply
       run: terraform apply -input=false "tfplan"

@@ -1,10 +1,9 @@
 resource "aws_ecr_repository" "youtube_lambda" {
-  name                 = "youtube-lambda-repo"
+  name                 = var.youtube_ecr_repo_name
   image_tag_mutability = "MUTABLE"
 
   tags = {
-    Name        = "YouTube Lambda ECR"
-    Environment = "production"
+    Name = var.youtube_ecr_repo_name
   }
 }
 

@@ -4,34 +4,66 @@
 
 
 resource "aws_s3_bucket" "youtube_uploader_bucket" {
-  bucket = "youtube-uploader-bucket"
+  bucket = local.s3_bucket_for_lambda
   tags = {
-    "Name" = "youtube-uploader-bucket"
+    Name = local.s3_bucket_for_lambda
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "youtube_uploader_bucket_sse" {
+  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "youtube_uploader_bucket_ownership" {
+  bucket = aws_s3_bucket.youtube_uploader_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+data "aws_iam_policy_document" "youtube_uploader_bucket_policy" {
+  statement {
+    sid    = "AllowLambdaListBucket"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.iam_for_youtube_video_generator_lambda.arn]
+    }
+
+    actions = ["s3:ListBucket"]
+    resources = [
+      aws_s3_bucket.youtube_uploader_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "AllowLambdaGetObject"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.iam_for_youtube_video_generator_lambda.arn]
+    }
+
+    actions = ["s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.youtube_uploader_bucket.arn}/*",
+    ]
   }
 }
 
 
 resource "aws_s3_bucket_policy" "allow_access_from_lambda_user" {
   bucket = aws_s3_bucket.youtube_uploader_bucket.id
-  policy = <<POLICY
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "AllowLambda",
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "arn:aws:iam::045107234435:role/service-role/youtube_video_generator-role"
-            },
-            "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": ["arn:aws:s3:::youtube-uploader-bucket/*", "arn:aws:s3:::youtube-uploader-bucket"]
-        }
-    ]
-}
-POLICY
+  policy = data.aws_iam_policy_document.youtube_uploader_bucket_policy.json
 }
 
 
