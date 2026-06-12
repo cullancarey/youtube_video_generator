@@ -62,13 +62,6 @@ install_requirements() {
   echo "✅ Deactivated $venv_path; Installation complete for $lambda_name."
 }
 
-test_tweet_lambda() {
-  echo "🔹 Activating venv-tweet and running tests for tweet_youtube_video.py..."
-  source "$PROJECT_ROOT/venv-tweet/bin/activate"
-  PYTHONPATH=. python -m pytest tests/test_tweet_youtube_video.py
-  deactivate
-}
-
 test_youtube_lambda() {
   echo "🔹 Activating venv-youtube and running tests for upload_video.py and youtube_video_generator.py..."
   source "$PROJECT_ROOT/venv-youtube/bin/activate"
@@ -83,18 +76,15 @@ echo "============================================"
 
 if [[ "$MODE" == "upgrade" ]]; then
   echo "🔄 Upgrade mode: upgrading all packages..."
-  upgrade_packages "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
   upgrade_packages "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
 elif [[ "$MODE" == "install" ]]; then
   echo "📦 Install mode: installing from requirements-dev.txt..."
-  install_requirements "$PROJECT_ROOT/venv-tweet" "$PROJECT_ROOT/lambdas/tweet/tweet_lambda_requirements-dev.txt" "Tweet Lambda"
   install_requirements "$PROJECT_ROOT/venv-youtube" "$PROJECT_ROOT/lambdas/youtube/youtube_lambda_requirements-dev.txt" "YouTube Lambda"
 else
   echo "❌ Unknown mode: $MODE. Use 'upgrade' (default) or 'install'."
   exit 1
 fi
 
-test_tweet_lambda
 test_youtube_lambda
 
 echo "✅ All tests completed"

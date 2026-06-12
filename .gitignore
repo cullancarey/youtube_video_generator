@@ -191,4 +191,3 @@ terraform/*.json
 get-pip.py
 
 lambdas/youtube/youtube_lambda_requirements-dev.txt
-lambdas/tweet/tweet_lambda_requirements-dev.txt

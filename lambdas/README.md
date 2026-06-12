@@ -1,21 +1,18 @@
 # Lambda Services
 
-This directory contains the two Lambda applications deployed as container images.
+This directory contains the YouTube Lambda application deployed as a container image.
 
-## Services
+## Service
 
 - youtube: builds and uploads a generated quote video to YouTube.
-- tweet: tweets the latest uploaded YouTube video.
 
-## Docker Images
+## Docker Image
 
 - lambdas/youtube/Dockerfile
-- lambdas/tweet/Dockerfile
 
-Both images are pushed to ECR by:
+Image is pushed to ECR by:
 
 - build_and_push_youtube.sh
-- build_and_push_tweet.sh
 
 ## Local Testing
 
@@ -31,10 +28,6 @@ Or run targeted tests:
 source venv-youtube/bin/activate
 PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_upload_video.py
 PYTHONPATH=.:$PWD/lambdas/youtube python -m pytest tests/test_youtube_video_generator.py
-deactivate
-
-source venv-tweet/bin/activate
-PYTHONPATH=. python -m pytest tests/test_tweet_youtube_video.py
 deactivate
 ```
 

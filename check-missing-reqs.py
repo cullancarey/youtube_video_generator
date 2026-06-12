@@ -22,48 +22,28 @@ def run_check(source_dir, requirements_file, ignore_paths):
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser(
         description="Check for unused/missing Python requirements."
     )
     parser.add_argument(
-        "--lambda-name",
-        choices=["tweet", "youtube"],
-        required=True,
-        help="Specify which Lambda to check requirements for.",
+        "--requirements-file",
+        default="youtube_lambda_requirements.txt",
+        help="Requirements file to validate (default: youtube_lambda_requirements.txt).",
     )
     args = parser.parse_args()
 
-    if args.lambda_name == "tweet":
-        run_check(
-            source_dir=".",
-            requirements_file="tweet_lambda_requirements.txt",
-            ignore_paths=[
-                "venv-tweet",
-                "tests",
-                "__pycache__",
-                ".pytest_cache",
-                ".mypy_cache",
-                ".git",
-                ".venv",
-                "terraform",
-                "images",
-            ],
-        )
-    elif args.lambda_name == "youtube":
-        run_check(
-            source_dir=".",
-            requirements_file="youtube_lambda_requirements.txt",
-            ignore_paths=[
-                "venv-youtube",
-                "tests",
-                "__pycache__",
-                ".pytest_cache",
-                ".mypy_cache",
-                ".git",
-                ".venv",
-                "terraform",
-                "images",
-            ],
-        )
+    run_check(
+        source_dir=".",
+        requirements_file=args.requirements_file,
+        ignore_paths=[
+            "venv-youtube",
+            "tests",
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".git",
+            ".venv",
+            "terraform",
+            "images",
+        ],
+    )
