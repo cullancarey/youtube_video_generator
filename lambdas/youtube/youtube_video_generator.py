@@ -167,7 +167,7 @@ def lambda_handler(event, context):
             f"-c:a aac -b:a 192k -shortest {video_path}"
         )
 
-        result = subprocess.run(shlex.split(command), capture_output=True)
+        result = subprocess.run(command, shell=True, capture_output=True)
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 1024:
