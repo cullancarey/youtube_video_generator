@@ -37,3 +37,13 @@ output "youtube_event_rule_arn" {
   description = "EventBridge rule ARN that triggers the YouTube Lambda"
   value       = aws_cloudwatch_event_rule.youtube_video_generator_lambda_rule.arn
 }
+
+output "youtube_alerts_topic_arn" {
+  description = "SNS topic ARN used for YouTube Lambda failure alerts"
+  value       = aws_sns_topic.youtube_lambda_alerts.arn
+}
+
+output "youtube_lambda_errors_alarm_name" {
+  description = "CloudWatch alarm name for YouTube Lambda error notifications"
+  value       = aws_cloudwatch_metric_alarm.youtube_lambda_errors.alarm_name
+}

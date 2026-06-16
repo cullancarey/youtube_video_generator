@@ -126,3 +126,14 @@ variable "youtube_image_tag" {
     error_message = "youtube_image_tag must be 1-128 chars and contain only letters, numbers, dots, underscores, or hyphens."
   }
 }
+
+variable "alert_email" {
+  description = "Email address to receive Lambda failure alerts via SNS"
+  type        = string
+  default     = "cullancarey@gmail.com"
+
+  validation {
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.alert_email))
+    error_message = "alert_email must be a valid email address."
+  }
+}
