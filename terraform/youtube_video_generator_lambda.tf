@@ -16,7 +16,7 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
   package_type = "Image"
   image_uri    = "${aws_ecr_repository.youtube_lambda.repository_url}@${data.aws_ecr_image.youtube_lambda.image_digest}"
 
-  timeout     = 120
+  timeout     = 900
   memory_size = 512
 }
 

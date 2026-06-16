@@ -69,6 +69,7 @@ def file_setup():
         logger.info("S3 files downloaded and image directory created.")
     except Exception as e:
         logger.critical(f"Failed in file_setup: {e}")
+        raise
 
 
 def lambda_handler(event, context):
@@ -77,7 +78,7 @@ def lambda_handler(event, context):
         file_setup()
     except Exception as e:
         logger.critical(f"File setup failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 2: Initialize Reddit
     try:
@@ -90,7 +91,7 @@ def lambda_handler(event, context):
         )
     except Exception as e:
         logger.critical(f"Reddit initialization failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 3: Fetch and write Reddit content
     try:
@@ -104,7 +105,7 @@ def lambda_handler(event, context):
         logger.info("Reddit content written to /tmp/story.txt.")
     except Exception as e:
         logger.critical(f"Failed to fetch or write Reddit post: {e}", exc_info=True)
-        return
+        raise
 
     # Step 4: Generate audio
     try:
@@ -115,7 +116,7 @@ def lambda_handler(event, context):
         logger.info("Audio generated successfully.")
     except Exception as e:
         logger.critical(f"TTS or audio generation failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 5: Analyze audio and collect images
     try:
@@ -150,7 +151,7 @@ def lambda_handler(event, context):
         logger.info(f"{num_images} image(s) prepared.")
     except Exception as e:
         logger.critical(f"Image processing failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 6: Generate video
     try:
@@ -216,7 +217,7 @@ def lambda_handler(event, context):
         logger.info("Video created successfully.")
     except Exception as e:
         logger.critical(f"Video generation failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 7: Upload
     try:
@@ -230,7 +231,7 @@ def lambda_handler(event, context):
         logger.info(f"Video uploaded and processed successfully. video_id={video_id}")
     except Exception as e:
         logger.critical(f"Upload failed: {e}", exc_info=True)
-        return
+        raise
 
     # Step 8: Cleanup
     try:

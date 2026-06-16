@@ -1,5 +1,7 @@
 import logging
 import sys
+import os
+import pytest
 from unittest import mock
 from lambdas.youtube import youtube_video_generator
 
@@ -101,3 +103,63 @@ def test_lambda_handler_minimal_path(
     assert mock_param.call_count >= 5
     assert mock_gtts.called
     assert mock_uploader.return_value.execute.called
+
+
+@mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
+def test_lambda_handler_raises_when_setup_fails(mock_file_setup):
+    mock_file_setup.side_effect = RuntimeError("setup-failed")
+
+    with pytest.raises(RuntimeError, match="setup-failed"):
+        youtube_video_generator.lambda_handler({}, {})
+
+
+@mock.patch("lambdas.youtube.youtube_video_generator.UploadVideo")
+@mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
+@mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.build_image_urls",
+    return_value=["https://picsum.photos/seed/1/1280/720"],
+)
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.download_image",
+    return_value=b"\xff\xd8\xff\xe0mockjpg",
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.gTTS")
+@mock.patch("lambdas.youtube.youtube_video_generator.MP3")
+@mock.patch("lambdas.youtube.youtube_video_generator.subprocess.run")
+@mock.patch("lambdas.youtube.youtube_video_generator.os.path.exists", return_value=True)
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.os.path.getsize", return_value=2048
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
+def test_lambda_handler_raises_when_upload_fails(
+    mock_file_setup,
+    mock_getsize,
+    mock_exists,
+    mock_subproc,
+    mock_mp3,
+    mock_gtts,
+    mock_download,
+    mock_build_urls,
+    mock_reddit,
+    mock_param,
+    mock_uploader,
+):
+    mock_subproc.return_value.returncode = 0
+    mock_mp3.return_value.info.length = 1
+    mock_gtts.return_value.save.return_value = None
+
+    mock_post = mock.Mock()
+    mock_post.over_18 = False
+    mock_post.title = "Title"
+    mock_post.selftext = "Text"
+    mock_post.author = "author"
+    mock_post.url = "url"
+    mock_post.permalink = "/r/quotes/comments/abc123/test"
+    mock_reddit.return_value.subreddit.return_value.new.return_value = [mock_post]
+
+    mock_uploader.return_value.execute.side_effect = RuntimeError("upload-failed")
+    os.makedirs("/tmp/images", exist_ok=True)
+
+    with pytest.raises(RuntimeError, match="upload-failed"):
+        youtube_video_generator.lambda_handler({}, {})
