@@ -23,6 +23,7 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
 resource "aws_cloudwatch_log_group" "youtube_video_generator_lambda" {
   name              = "/aws/lambda/${aws_lambda_function.youtube_video_generator_lambda.function_name}"
   retention_in_days = var.lambda_log_retention_days
+  skip_destroy      = true
 }
 
 resource "aws_iam_role" "iam_for_youtube_video_generator_lambda" {
