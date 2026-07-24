@@ -19,7 +19,7 @@ praw==7.8.2
 prawcore==2.4.0
 proto-plus==1.28.0
 protobuf==7.35.1
-pyasn1==0.6.3
+pyasn1==0.6.4
 pyasn1-modules==0.4.2
 pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
 pyparsing==3.3.2
