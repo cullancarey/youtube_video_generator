@@ -112,9 +112,7 @@ def test_select_safe_post_skips_used_posts():
     reddit.subreddit.return_value.top.return_value = [used_post, fresh_post]
     reddit.subreddit.return_value.new.return_value = []
 
-    selected = youtube_video_generator.select_safe_post(
-        reddit, used_post_ids={"used1"}
-    )
+    selected = youtube_video_generator.select_safe_post(reddit, used_post_ids={"used1"})
     assert selected is fresh_post
 
 
@@ -290,9 +288,7 @@ def test_lambda_handler_raises_when_all_candidates_flagged(
 
     mock_reddit.return_value.subreddit.return_value.new.return_value = [flagged_post]
 
-    with pytest.raises(
-        RuntimeError, match="No safe, unused Reddit post found"
-    ):
+    with pytest.raises(RuntimeError, match="No safe, unused Reddit post found"):
         youtube_video_generator.lambda_handler({}, {})
 
 

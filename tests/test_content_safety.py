@@ -2,7 +2,10 @@ from lambdas.youtube import content_safety
 
 
 def test_find_denylisted_term_detects_match():
-    assert content_safety.find_denylisted_term("A quote from Adolf Hitler") == "Adolf Hitler"
+    assert (
+        content_safety.find_denylisted_term("A quote from Adolf Hitler")
+        == "Adolf Hitler"
+    )
 
 
 def test_find_denylisted_term_is_case_insensitive():
@@ -15,7 +18,10 @@ def test_find_denylisted_term_respects_word_boundaries():
 
 
 def test_find_denylisted_term_returns_none_for_clean_text():
-    assert content_safety.find_denylisted_term("Believe you can and you're halfway there") is None
+    assert (
+        content_safety.find_denylisted_term("Believe you can and you're halfway there")
+        is None
+    )
 
 
 def test_find_denylisted_term_handles_empty_text():
