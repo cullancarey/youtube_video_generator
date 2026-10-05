@@ -237,6 +237,7 @@ def lambda_handler(event, context):
     try:
         frame_rate = max(0.1, audio.info.length / max(1, num_images))
         video_path = "/tmp/output.mp4"
+        video_path_short = "/tmp/output_short.mp4"
         concat_file = "/tmp/images_concat.txt"
 
         image_files = sorted(glob.glob("/tmp/images/image*"))
@@ -251,50 +252,66 @@ def lambda_handler(event, context):
             # Repeat last image; ffmpeg concat demuxer ignores duration on final entry otherwise.
             f.write(f"file '{image_files[-1]}'\n")
 
-        command = [
-            f"{os.getcwd()}/ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            concat_file,
-            "-i",
-            "/tmp/story.mp3",
-            "-vsync",
-            "vfr",
-            "-c:v",
-            "libx264",
-            "-profile:v",
-            "main",
-            "-level",
-            "4.0",
-            "-pix_fmt",
-            "yuv420p",
-            "-crf",
-            "18",
-            "-vf",
-            "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
-            "-r",
-            "30",
-            "-movflags",
-            "+faststart",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            "-shortest",
-            video_path,
-        ]
+        def render_video(output_path, scale_filter):
+            command = [
+                f"{os.getcwd()}/ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                concat_file,
+                "-i",
+                "/tmp/story.mp3",
+                "-vsync",
+                "vfr",
+                "-c:v",
+                "libx264",
+                "-profile:v",
+                "main",
+                "-level",
+                "4.0",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "18",
+                "-vf",
+                scale_filter,
+                "-r",
+                "30",
+                "-movflags",
+                "+faststart",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-shortest",
+                output_path,
+            ]
+            result = subprocess.run(command, capture_output=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
+            if not os.path.exists(output_path) or os.path.getsize(output_path) < 1024:
+                raise RuntimeError("Generated video file is missing or too small.")
 
-        result = subprocess.run(command, capture_output=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()}")
-        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1024:
-            raise RuntimeError("Generated video file is missing or too small.")
+        render_video(
+            video_path,
+            "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+        )
         logger.info("Video created successfully.")
+
+        short_video_ready = False
+        try:
+            render_video(
+                video_path_short,
+                "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+            )
+            short_video_ready = True
+            logger.info("Vertical (Shorts) video created successfully.")
+        except Exception as e:
+            logger.warning(f"Shorts video generation failed: {e}", exc_info=True)
     except Exception as e:
         logger.critical(f"Video generation failed: {e}", exc_info=True)
         raise
@@ -313,6 +330,22 @@ def lambda_handler(event, context):
         logger.critical(f"Upload failed: {e}", exc_info=True)
         raise
 
+    # Shorts upload is best-effort: a failure here shouldn't fail the whole run
+    # since the primary long-form video already uploaded successfully.
+    if short_video_ready:
+        try:
+            short_id = uploader.execute(
+                video_path_short,
+                f"{title} #Shorts",
+                description,
+                "22",
+                keywords + ["shorts"],
+                "public",
+            )
+            logger.info(f"Shorts video uploaded successfully. video_id={short_id}")
+        except Exception as e:
+            logger.warning(f"Shorts upload failed: {e}", exc_info=True)
+
     # Record the post as used only after a successful upload, so a downstream
     # failure doesn't permanently burn a quote that was never actually posted.
     try:
@@ -329,6 +362,7 @@ def lambda_handler(event, context):
             "/tmp/story.txt",
             "/tmp/story.mp3",
             "/tmp/output.mp4",
+            "/tmp/output_short.mp4",
             "/tmp/client_secrets.json",
         ]:
             if os.path.isdir(path):

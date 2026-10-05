@@ -197,6 +197,76 @@ def test_lambda_handler_minimal_path(
     assert mock_gtts.called
     assert mock_uploader.return_value.execute.called
     assert mock_save_history.called
+    # Primary landscape upload + best-effort vertical Shorts upload.
+    assert mock_uploader.return_value.execute.call_count == 2
+    assert mock_subproc.call_count == 2
+    shorts_args = mock_uploader.return_value.execute.call_args_list[1].args
+    assert shorts_args[0] == "/tmp/output_short.mp4"
+    assert shorts_args[1].endswith("#Shorts")
+
+
+@mock.patch("lambdas.youtube.youtube_video_generator.save_post_history")
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.load_post_history", return_value={}
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.UploadVideo")
+@mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
+@mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.build_image_urls",
+    return_value=["https://picsum.photos/seed/1/1280/720"],
+)
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.download_image",
+    return_value=b"\xff\xd8\xff\xe0mockjpg",
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.gTTS")
+@mock.patch("lambdas.youtube.youtube_video_generator.MP3")
+@mock.patch("lambdas.youtube.youtube_video_generator.subprocess.run")
+@mock.patch("lambdas.youtube.youtube_video_generator.os.path.exists", return_value=True)
+@mock.patch(
+    "lambdas.youtube.youtube_video_generator.os.path.getsize", return_value=2048
+)
+@mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
+def test_lambda_handler_shorts_upload_failure_does_not_fail_run(
+    mock_file_setup,
+    mock_getsize,
+    mock_exists,
+    mock_subproc,
+    mock_mp3,
+    mock_gtts,
+    mock_download,
+    mock_build_urls,
+    mock_reddit,
+    mock_param,
+    mock_uploader,
+    mock_load_history,
+    mock_save_history,
+):
+    mock_subproc.return_value.returncode = 0
+    mock_mp3.return_value.info.length = 1
+    mock_gtts.return_value.save.return_value = None
+    os.makedirs("/tmp/images", exist_ok=True)
+
+    mock_post = mock.Mock()
+    mock_post.id = "post1"
+    mock_post.over_18 = False
+    mock_post.title = "Title"
+    mock_post.selftext = "Text"
+    mock_post.author = "author"
+    mock_post.url = "url"
+    mock_post.permalink = "/r/quotes/comments/abc123/test"
+    mock_reddit.return_value.subreddit.return_value.new.return_value = [mock_post]
+
+    # Primary upload succeeds; Shorts upload fails and should be swallowed.
+    mock_uploader.return_value.execute.side_effect = [
+        "primary-video-id",
+        RuntimeError("shorts-upload-failed"),
+    ]
+
+    youtube_video_generator.lambda_handler({}, {})
+    assert mock_uploader.return_value.execute.call_count == 2
+    assert mock_save_history.called
 
 
 @mock.patch("lambdas.youtube.youtube_video_generator.save_post_history")
