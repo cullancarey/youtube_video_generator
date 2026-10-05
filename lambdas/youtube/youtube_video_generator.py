@@ -4,19 +4,28 @@ import praw
 import os
 import glob
 import hashlib
+import json
 import subprocess
 import shutil
 import logging
+from datetime import datetime, timedelta, timezone
 from gtts import gTTS
 import requests
+from botocore.exceptions import ClientError
 from mutagen.mp3 import MP3
 import boto3
 
+from content_safety import find_denylisted_term
 from metadata_optimizer import optimize_metadata
 from upload_video import UploadVideo
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
+
+S3_BUCKET = "youtube-uploader-bucket"
+POST_HISTORY_KEY = "used_reddit_posts.json"
+POST_HISTORY_PATH = f"/tmp/{POST_HISTORY_KEY}"
+POST_HISTORY_RETENTION_DAYS = 180
 
 
 def download_image(url):
@@ -55,7 +64,7 @@ def get_param(param_name):
 def file_setup():
     try:
         s3 = boto3.resource("s3")
-        bucket = "youtube-uploader-bucket"
+        bucket = S3_BUCKET
         keys = [
             "youtube_video_generator.py-oauth2.json",
             "story.txt",
@@ -70,6 +79,71 @@ def file_setup():
     except Exception as e:
         logger.critical(f"Failed in file_setup: {e}")
         raise
+
+
+def load_post_history():
+    """Fetch the record of previously-used Reddit post IDs; empty dict on first run."""
+    try:
+        boto3.resource("s3").Bucket(S3_BUCKET).download_file(
+            POST_HISTORY_KEY, POST_HISTORY_PATH
+        )
+    except ClientError:
+        logger.info("No existing post history found in S3; starting fresh.")
+        return {}
+    try:
+        with open(POST_HISTORY_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        logger.warning("Could not parse post history file; starting fresh.")
+        return {}
+
+
+def save_post_history(history):
+    """Prune entries older than the retention window and persist history to S3."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=POST_HISTORY_RETENTION_DAYS)
+    pruned = {}
+    for post_id, used_at in history.items():
+        try:
+            used_time = datetime.fromisoformat(used_at)
+        except ValueError:
+            continue
+        if used_time >= cutoff:
+            pruned[post_id] = used_at
+
+    with open(POST_HISTORY_PATH, "w", encoding="utf-8") as f:
+        json.dump(pruned, f)
+    boto3.resource("s3").Bucket(S3_BUCKET).upload_file(
+        POST_HISTORY_PATH, POST_HISTORY_KEY
+    )
+
+
+def select_safe_post(reddit, used_post_ids):
+    """Pick an unused, non-NSFW, non-denylisted post, preferring community-vetted
+    (upvoted) candidates over unvetted brand-new submissions."""
+    search_tiers = [
+        ("day", 50),
+        ("week", 50),
+        ("month", 50),
+        (None, 25),  # last resort: unvetted newest posts
+    ]
+    for time_filter, limit in search_tiers:
+        subreddit = reddit.subreddit("quotes")
+        candidates = (
+            subreddit.new(limit=limit)
+            if time_filter is None
+            else subreddit.top(time_filter=time_filter, limit=limit)
+        )
+        for post in candidates:
+            if post.over_18 or post.id in used_post_ids:
+                continue
+            flagged_term = find_denylisted_term(f"{post.title}\n{post.selftext}")
+            if flagged_term:
+                logger.warning(
+                    f"Skipping post {post.id} flagged for denylisted term '{flagged_term}'."
+                )
+                continue
+            return post
+    return None
 
 
 def lambda_handler(event, context):
@@ -96,12 +170,18 @@ def lambda_handler(event, context):
     # Step 3: Fetch and write Reddit content
     try:
         author = reddit_url = ""
+        post_history = load_post_history()
+        selected_post = select_safe_post(reddit, set(post_history.keys()))
+
+        if selected_post is None:
+            raise RuntimeError(
+                "No safe, unused Reddit post found across day/week/month/new candidates."
+            )
+
         with open("/tmp/story.txt", "w", encoding="utf-8") as f:
-            for post in reddit.subreddit("quotes").new(limit=1):
-                if not post.over_18:
-                    f.write(f"{post.title}\n{post.selftext}")
-                    author = str(post.author)
-                    reddit_url = f"https://www.reddit.com{post.permalink}"
+            f.write(f"{selected_post.title}\n{selected_post.selftext}")
+        author = str(selected_post.author)
+        reddit_url = f"https://www.reddit.com{selected_post.permalink}"
         logger.info("Reddit content written to /tmp/story.txt.")
     except Exception as e:
         logger.critical(f"Failed to fetch or write Reddit post: {e}", exc_info=True)
@@ -232,6 +312,14 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.critical(f"Upload failed: {e}", exc_info=True)
         raise
+
+    # Record the post as used only after a successful upload, so a downstream
+    # failure doesn't permanently burn a quote that was never actually posted.
+    try:
+        post_history[selected_post.id] = datetime.now(timezone.utc).isoformat()
+        save_post_history(post_history)
+    except Exception as e:
+        logger.warning(f"Failed to persist post history: {e}", exc_info=True)
 
     # Step 8: Cleanup
     try:

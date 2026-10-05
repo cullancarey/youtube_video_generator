@@ -106,6 +106,17 @@ data "aws_iam_policy_document" "youtube_video_generator_lambda" {
       "${aws_s3_bucket.youtube_uploader_bucket.arn}/*",
     ]
   }
+
+  statement {
+    sid    = "AllowS3PutPostHistoryObject"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+    ]
+    resources = [
+      "${aws_s3_bucket.youtube_uploader_bucket.arn}/used_reddit_posts.json",
+    ]
+  }
 }
 
 resource "aws_iam_policy" "youtube_video_generator_lambda_iam_policy" {
