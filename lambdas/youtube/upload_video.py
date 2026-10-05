@@ -164,24 +164,46 @@ class UploadVideo:
         last_processing_status = None
         last_upload_status = None
         video_seen = False  # track whether we ever received items for this video
+        retriable_status_codes = [500, 502, 503, 504]
+        max_poll_retries = 5
 
         while True:
-            try:
-                response = (
-                    youtube.videos()
-                    .list(part="processingDetails,status", id=video_id)
-                    .execute()
-                )
-            except HttpError as err:
-                if err.resp.status == 403 and b"insufficientPermissions" in getattr(
-                    err, "content", b""
-                ):
-                    raise PermissionError(
-                        "YouTube processing check needs readonly scope. Re-authorize "
-                        "youtube_video_generator.py-oauth2.json with both youtube.upload "
-                        "and youtube.readonly scopes, then upload it to S3."
-                    ) from err
-                raise
+            poll_retry = 0
+            response = None
+            while response is None:
+                try:
+                    response = (
+                        youtube.videos()
+                        .list(part="processingDetails,status", id=video_id)
+                        .execute()
+                    )
+                except HttpError as err:
+                    if (
+                        err.resp.status == 403
+                        and b"insufficientPermissions" in getattr(err, "content", b"")
+                    ):
+                        raise PermissionError(
+                            "YouTube processing check needs readonly scope. Re-authorize "
+                            "youtube_video_generator.py-oauth2.json with both youtube.upload "
+                            "and youtube.readonly scopes, then upload it to S3."
+                        ) from err
+                    if err.resp.status not in retriable_status_codes:
+                        raise
+                    poll_retry += 1
+                    if poll_retry > max_poll_retries:
+                        raise RuntimeError(
+                            f"Max retries exceeded polling YouTube processing status for {video_id}"
+                        ) from err
+                    sleep_time = random.uniform(1, 2**poll_retry)
+                    logger.warning(
+                        "Transient HTTP %d while polling status for %s (attempt %d/%d); retrying in %.2fs",
+                        err.resp.status,
+                        video_id,
+                        poll_retry,
+                        max_poll_retries,
+                        sleep_time,
+                    )
+                    time.sleep(sleep_time)
             items = response.get("items", [])
             if not items:
                 empty_polls += 1

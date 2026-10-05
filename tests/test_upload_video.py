@@ -1,7 +1,16 @@
+import httplib2
+import json
 import pytest
 from unittest import mock
+from apiclient.errors import HttpError
+from googleapiclient.discovery import build
+from googleapiclient.http import HttpMockSequence
 from lambdas.youtube.upload_video import UploadVideo
 from oauth2client.client import OAuth2Credentials
+
+
+def _http_error(status):
+    return HttpError(httplib2.Response({"status": status}), b"error body")
 
 
 @mock.patch("lambdas.youtube.upload_video.Storage")
@@ -207,3 +216,147 @@ def test_wait_for_processing_fails_after_repeated_empty_items():
             poll_interval_seconds=0,
             max_empty_polls=2,
         )
+
+
+@mock.patch("lambdas.youtube.upload_video.time.sleep")
+def test_wait_for_processing_retries_transient_poll_error(mock_sleep):
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.side_effect = [
+        _http_error(500),
+        _http_error(503),
+        {
+            "items": [
+                {
+                    "processingDetails": {"processingStatus": "succeeded"},
+                    "status": {"uploadStatus": "processed"},
+                }
+            ]
+        },
+    ]
+
+    uploader.wait_for_processing(
+        youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
+    )
+    assert mock_sleep.call_count == 2
+
+
+@mock.patch("lambdas.youtube.upload_video.time.sleep")
+def test_wait_for_processing_raises_after_max_transient_poll_retries(mock_sleep):
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.side_effect = _http_error(500)
+
+    with pytest.raises(RuntimeError):
+        uploader.wait_for_processing(
+            youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
+        )
+
+
+def test_wait_for_processing_does_not_retry_non_transient_poll_error():
+    uploader = UploadVideo()
+    youtube = mock.Mock()
+    youtube.videos.return_value.list.return_value.execute.side_effect = _http_error(404)
+
+    with pytest.raises(HttpError):
+        uploader.wait_for_processing(
+            youtube, "video123", timeout_seconds=1, poll_interval_seconds=0
+        )
+
+
+# --- Offline end-to-end tests -------------------------------------------------
+# These drive UploadVideo.execute() through the real googleapiclient request
+# building/parsing machinery (resumable upload handshake + status polling),
+# but swap out the HTTP transport for HttpMockSequence so no real network call
+# ever reaches YouTube's servers and no API quota is consumed.
+
+
+def _build_fake_youtube(http_sequence):
+    return build(
+        "youtube", "v3", http=HttpMockSequence(http_sequence), static_discovery=True
+    )
+
+
+def _make_video_file(tmp_path):
+    video_path = tmp_path / "output.mp4"
+    video_path.write_bytes(b"0" * 2048)
+    return str(video_path)
+
+
+def test_execute_end_to_end_offline(tmp_path):
+    video_path = _make_video_file(tmp_path)
+    youtube = _build_fake_youtube(
+        [
+            (
+                {"status": "200", "location": "https://upload.example.com/resumable/1"},
+                b"",
+            ),
+            ({"status": "200"}, json.dumps({"id": "FAKE_VIDEO_ID"}).encode()),
+            (
+                {"status": "200"},
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "processingDetails": {"processingStatus": "succeeded"},
+                                "status": {"uploadStatus": "processed"},
+                            }
+                        ]
+                    }
+                ).encode(),
+            ),
+        ]
+    )
+
+    uploader = UploadVideo()
+    with mock.patch.object(
+        UploadVideo, "get_authenticated_service", return_value=youtube
+    ):
+        video_id = uploader.execute(
+            video_path, "Title", "Desc", "22", ["a", "b"], "public"
+        )
+
+    assert video_id == "FAKE_VIDEO_ID"
+
+
+def test_execute_end_to_end_offline_retries_transient_poll_error(tmp_path):
+    video_path = _make_video_file(tmp_path)
+    youtube = _build_fake_youtube(
+        [
+            (
+                {"status": "200", "location": "https://upload.example.com/resumable/1"},
+                b"",
+            ),
+            ({"status": "200"}, json.dumps({"id": "FAKE_VIDEO_ID"}).encode()),
+            (
+                {"status": "500"},
+                b'{"error": {"message": "Internal error encountered."}}',
+            ),
+            (
+                {"status": "200"},
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "processingDetails": {"processingStatus": "succeeded"},
+                                "status": {"uploadStatus": "processed"},
+                            }
+                        ]
+                    }
+                ).encode(),
+            ),
+        ]
+    )
+
+    uploader = UploadVideo()
+    with (
+        mock.patch.object(
+            UploadVideo, "get_authenticated_service", return_value=youtube
+        ),
+        mock.patch("lambdas.youtube.upload_video.time.sleep"),
+    ):
+        video_id = uploader.execute(
+            video_path, "Title", "Desc", "22", ["a", "b"], "public"
+        )
+
+    assert video_id == "FAKE_VIDEO_ID"
