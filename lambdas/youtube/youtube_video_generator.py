@@ -8,6 +8,7 @@ import json
 import subprocess
 import shutil
 import logging
+import traceback
 from datetime import datetime, timedelta, timezone
 from gtts import gTTS
 import requests
@@ -146,7 +147,42 @@ def select_safe_post(reddit, used_post_ids):
     return None
 
 
+def notify_failure(context, exc):
+    """Publish the specific failure (type, message, traceback) to SNS.
+
+    This supplements the CloudWatch metric alarm (which only reports an error
+    count) with the actual root cause, so the alert email is actionable.
+    """
+    topic_arn = os.environ.get("ALERT_SNS_TOPIC_ARN")
+    if not topic_arn:
+        logger.warning("ALERT_SNS_TOPIC_ARN not set; skipping failure notification.")
+        return
+    try:
+        request_id = getattr(context, "aws_request_id", "unknown")
+        message = (
+            f"YouTube video generator Lambda failed.\n\n"
+            f"RequestId: {request_id}\n"
+            f"Error: {type(exc).__name__}: {exc}\n\n"
+            f"Traceback:\n{traceback.format_exc()}"
+        )
+        boto3.client("sns").publish(
+            TopicArn=topic_arn,
+            Subject="YouTube Lambda Failed",
+            Message=message[:262144],  # SNS message size limit
+        )
+    except Exception:
+        logger.warning("Failed to publish failure notification to SNS", exc_info=True)
+
+
 def lambda_handler(event, context):
+    try:
+        return _lambda_handler_impl(event, context)
+    except Exception as e:
+        notify_failure(context, e)
+        raise
+
+
+def _lambda_handler_impl(event, context):
     # Step 1: Setup
     try:
         file_setup()

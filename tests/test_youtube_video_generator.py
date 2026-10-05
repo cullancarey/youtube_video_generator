@@ -370,6 +370,31 @@ def test_lambda_handler_raises_when_setup_fails(mock_file_setup):
         youtube_video_generator.lambda_handler({}, {})
 
 
+@mock.patch("boto3.client")
+@mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
+def test_lambda_handler_publishes_failure_details_to_sns(mock_file_setup, mock_boto_client, monkeypatch):
+    monkeypatch.setenv("ALERT_SNS_TOPIC_ARN", "arn:aws:sns:us-east-2:123456789012:alerts")
+    mock_file_setup.side_effect = RuntimeError("setup-failed")
+    mock_sns = mock.Mock()
+    mock_boto_client.return_value = mock_sns
+
+    context = mock.Mock(aws_request_id="req-123")
+    with pytest.raises(RuntimeError, match="setup-failed"):
+        youtube_video_generator.lambda_handler({}, context)
+
+    mock_sns.publish.assert_called_once()
+    publish_kwargs = mock_sns.publish.call_args.kwargs
+    assert publish_kwargs["TopicArn"] == "arn:aws:sns:us-east-2:123456789012:alerts"
+    assert "req-123" in publish_kwargs["Message"]
+    assert "setup-failed" in publish_kwargs["Message"]
+
+
+def test_notify_failure_skips_when_topic_arn_not_set(monkeypatch):
+    monkeypatch.delenv("ALERT_SNS_TOPIC_ARN", raising=False)
+    # Should return quietly without attempting to publish.
+    youtube_video_generator.notify_failure(mock.Mock(), RuntimeError("boom"))
+
+
 @mock.patch("lambdas.youtube.youtube_video_generator.save_post_history")
 @mock.patch(
     "lambdas.youtube.youtube_video_generator.load_post_history", return_value={}

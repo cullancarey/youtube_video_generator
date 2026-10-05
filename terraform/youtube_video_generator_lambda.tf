@@ -18,6 +18,12 @@ resource "aws_lambda_function" "youtube_video_generator_lambda" {
 
   timeout     = 900
   memory_size = 512
+
+  environment {
+    variables = {
+      ALERT_SNS_TOPIC_ARN = aws_sns_topic.youtube_lambda_alerts.arn
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "youtube_video_generator_lambda" {
@@ -115,6 +121,17 @@ data "aws_iam_policy_document" "youtube_video_generator_lambda" {
     ]
     resources = [
       "${aws_s3_bucket.youtube_uploader_bucket.arn}/used_reddit_posts.json",
+    ]
+  }
+
+  statement {
+    sid    = "AllowSnsPublishAlert"
+    effect = "Allow"
+    actions = [
+      "sns:Publish",
+    ]
+    resources = [
+      aws_sns_topic.youtube_lambda_alerts.arn,
     ]
   }
 }
