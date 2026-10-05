@@ -16,7 +16,7 @@ jobs:
     outputs:
       image-tag: ${{ steps.build.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -44,7 +44,7 @@ jobs:
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     # Configure AWS Creds
     - name: Configure AWS Credentials 
