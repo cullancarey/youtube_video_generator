@@ -372,8 +372,12 @@ def test_lambda_handler_raises_when_setup_fails(mock_file_setup):
 
 @mock.patch("boto3.client")
 @mock.patch("lambdas.youtube.youtube_video_generator.file_setup")
-def test_lambda_handler_publishes_failure_details_to_sns(mock_file_setup, mock_boto_client, monkeypatch):
-    monkeypatch.setenv("ALERT_SNS_TOPIC_ARN", "arn:aws:sns:us-east-2:123456789012:alerts")
+def test_lambda_handler_publishes_failure_details_to_sns(
+    mock_file_setup, mock_boto_client, monkeypatch
+):
+    monkeypatch.setenv(
+        "ALERT_SNS_TOPIC_ARN", "arn:aws:sns:us-east-2:123456789012:alerts"
+    )
     mock_file_setup.side_effect = RuntimeError("setup-failed")
     mock_sns = mock.Mock()
     mock_boto_client.return_value = mock_sns
