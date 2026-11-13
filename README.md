@@ -81,6 +81,7 @@ Upgrade dependencies and refresh lock + requirements:
 Parameters expected in SSM Parameter Store:
 
 - reddit_client_id
+- pixabay_api_key (free key from pixabay.com/api/docs; SecureString)
 - reddit_client_secret
 - reddit_user_agent
 - reddit_username

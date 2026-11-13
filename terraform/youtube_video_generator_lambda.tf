@@ -65,6 +65,7 @@ data "aws_iam_policy_document" "youtube_video_generator_lambda" {
       "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_password",
       "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_user_agent",
       "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/reddit_client_id",
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${local.account_id}:parameter/pixabay_api_key",
     ]
   }
 

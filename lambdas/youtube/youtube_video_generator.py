@@ -3,8 +3,8 @@
 import praw
 import os
 import glob
-import hashlib
 import json
+import re
 import subprocess
 import shutil
 import logging
@@ -27,6 +27,8 @@ S3_BUCKET = "youtube-uploader-bucket"
 POST_HISTORY_KEY = "used_reddit_posts.json"
 POST_HISTORY_PATH = f"/tmp/{POST_HISTORY_KEY}"
 POST_HISTORY_RETENTION_DAYS = 180
+PIXABAY_SEARCH_URL = "https://pixabay.com/api/"
+MAX_CONSECUTIVE_DOWNLOAD_FAILURES = 3
 
 
 def download_image(url):
@@ -42,13 +44,91 @@ def download_image(url):
     return None
 
 
-def build_image_urls(text, num_images):
-    """Build Lorem Picsum URLs seeded from the quote text for reproducible variety."""
-    base_seed = int(hashlib.md5(text.encode()).hexdigest(), 16) % 1000
+def generate_fallback_image(path):
+    """Render a solid-color 1280x720 JPEG with ffmpeg when the image source is down."""
+    try:
+        subprocess.run(
+            [
+                f"{os.getcwd()}/ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=0x1a1a2e:s=1280x720",
+                "-frames:v",
+                "1",
+                path,
+            ],
+            check=True,
+            capture_output=True,
+        )
+        return os.path.exists(path)
+    except Exception as e:
+        logger.error(f"Failed to generate fallback image: {e}")
+        return False
+
+
+STOPWORDS = {
+    "about", "after", "again", "always", "because", "been", "before", "being",
+    "could", "every", "from", "have", "into", "just", "more", "most", "never",
+    "only", "other", "should", "than", "that", "their", "them", "then", "there",
+    "these", "they", "this", "those", "through", "what", "when", "where",
+    "which", "while", "will", "with", "would", "your",
+}  # fmt: skip
+DEFAULT_IMAGE_QUERY = "nature landscape"
+
+
+def build_image_query(text):
+    """Pick up to two of the longest meaningful words in the quote as a search query."""
+    words = re.findall(r"[a-z]{4,}", text.split("\u2015")[0].lower())
+    candidates = list(dict.fromkeys(w for w in words if w not in STOPWORDS))
+    top = sorted(candidates, key=len, reverse=True)[:2]
+    return " ".join(top) or DEFAULT_IMAGE_QUERY
+
+
+def _pixabay_search(query, num_images, api_key):
+    response = requests.get(
+        PIXABAY_SEARCH_URL,
+        params={
+            "key": api_key,
+            "q": query,
+            "image_type": "photo",
+            "orientation": "horizontal",
+            "min_width": 1280,
+            "safesearch": "true",
+            "per_page": min(200, max(num_images, 3)),
+        },
+        timeout=20,
+    )
+    if response.status_code != 200:
+        logger.error(f"Pixabay search failed. Status: {response.status_code}")
+        return []
     return [
-        f"https://picsum.photos/seed/{(base_seed + i) % 1000}/1280/720"
-        for i in range(num_images)
+        hit["largeImageURL"]
+        for hit in response.json().get("hits", [])
+        if hit.get("largeImageURL")
     ]
+
+
+def fetch_image_urls(text, num_images, api_key):
+    """Search Pixabay for landscape photos matching the quote; fall back to a generic query."""
+    if not api_key:
+        logger.error("Pixabay API key unavailable; skipping image search.")
+        return []
+    urls = []
+    for query in (build_image_query(text), DEFAULT_IMAGE_QUERY):
+        try:
+            urls = _pixabay_search(query, num_images, api_key)
+        except Exception as e:
+            logger.error(f"Pixabay search error for '{query}': {type(e).__name__}")
+            return []
+        if urls:
+            logger.info(f"Pixabay returned {len(urls)} image(s) for '{query}'.")
+            break
+        if query == DEFAULT_IMAGE_QUERY:
+            break
+    return urls
 
 
 def get_param(param_name):
@@ -238,16 +318,23 @@ def _lambda_handler_impl(event, context):
     try:
         audio = MP3("/tmp/story.mp3")
         num_images = max(1, int(audio.info.length))
-        urls = build_image_urls(text, num_images)
-        logger.info(f"Fetching {len(urls)} image(s) from Picsum for text: {text[:80]}")
+        urls = fetch_image_urls(text, num_images, get_param("pixabay_api_key"))
+        logger.info(f"Fetching {len(urls)} image(s) from Pixabay for text: {text[:80]}")
 
         saved = 0
+        consecutive_failures = 0
         for image_url in urls:
             if saved >= num_images:
                 break
+            # Image host outage: stop retrying and use the generated fallback.
+            if consecutive_failures >= MAX_CONSECUTIVE_DOWNLOAD_FAILURES:
+                logger.error("Image source appears down; aborting downloads.")
+                break
             image = download_image(image_url)
             if not image:
+                consecutive_failures += 1
                 continue
+            consecutive_failures = 0
             # Validate the downloaded bytes are a real JPEG or PNG before saving,
             # so ffmpeg never receives a corrupt/WebP/AVIF file mislabeled as .jpg.
             if image[:3] == b"\xff\xd8\xff":
@@ -262,7 +349,12 @@ def _lambda_handler_impl(event, context):
             saved += 1
 
         if saved == 0:
-            raise RuntimeError("No valid images were downloaded for video generation.")
+            logger.warning("No images downloaded; generating a fallback background.")
+            if not generate_fallback_image("/tmp/images/image0.jpg"):
+                raise RuntimeError(
+                    "No valid images were downloaded for video generation."
+                )
+            saved = 1
         num_images = saved
         logger.info(f"{num_images} image(s) prepared.")
     except Exception as e:

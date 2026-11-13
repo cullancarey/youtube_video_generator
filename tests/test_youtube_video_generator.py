@@ -14,16 +14,34 @@ logging.basicConfig(
 )
 
 
-def test_build_image_urls_count_and_shape():
-    urls = youtube_video_generator.build_image_urls("python quote", 3)
-    assert len(urls) == 3
-    assert all(u.startswith("https://picsum.photos/seed/") for u in urls)
+def test_build_image_query_uses_longest_words_without_attribution():
+    query = youtube_video_generator.build_image_query(
+        "\u201cThe purpose of literature is to turn blood into ink.\u201d \u2015 T.S. Eliot"
+    )
+    assert query == "literature purpose"
 
 
-def test_build_image_urls_deterministic_for_same_text():
-    urls_one = youtube_video_generator.build_image_urls("same text", 2)
-    urls_two = youtube_video_generator.build_image_urls("same text", 2)
-    assert urls_one == urls_two
+def test_build_image_query_default_when_no_keywords():
+    assert (
+        youtube_video_generator.build_image_query("a b c")
+        == youtube_video_generator.DEFAULT_IMAGE_QUERY
+    )
+
+
+@mock.patch("requests.get")
+def test_fetch_image_urls_falls_back_to_default_query(mock_get):
+    empty = mock.Mock(status_code=200)
+    empty.json.return_value = {"hits": []}
+    hit = mock.Mock(status_code=200)
+    hit.json.return_value = {"hits": [{"largeImageURL": "http://img/1.jpg"}]}
+    mock_get.side_effect = [empty, hit]
+    urls = youtube_video_generator.fetch_image_urls("serendipity quote", 2, "key")
+    assert urls == ["http://img/1.jpg"]
+    assert mock_get.call_count == 2
+
+
+def test_fetch_image_urls_without_key_returns_empty():
+    assert youtube_video_generator.fetch_image_urls("text", 2, None) == []
 
 
 @mock.patch("requests.get")
@@ -147,8 +165,8 @@ def test_select_safe_post_returns_none_when_all_filtered_out():
 @mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
 @mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.build_image_urls",
-    return_value=["https://picsum.photos/seed/1/1280/720"],
+    "lambdas.youtube.youtube_video_generator.fetch_image_urls",
+    return_value=["https://cdn.pixabay.com/1.jpg"],
 )
 @mock.patch(
     "lambdas.youtube.youtube_video_generator.download_image",
@@ -213,8 +231,8 @@ def test_lambda_handler_minimal_path(
 @mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
 @mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.build_image_urls",
-    return_value=["https://picsum.photos/seed/1/1280/720"],
+    "lambdas.youtube.youtube_video_generator.fetch_image_urls",
+    return_value=["https://cdn.pixabay.com/1.jpg"],
 )
 @mock.patch(
     "lambdas.youtube.youtube_video_generator.download_image",
@@ -277,8 +295,8 @@ def test_lambda_handler_shorts_upload_failure_does_not_fail_run(
 @mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
 @mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.build_image_urls",
-    return_value=["https://picsum.photos/seed/1/1280/720"],
+    "lambdas.youtube.youtube_video_generator.fetch_image_urls",
+    return_value=["https://cdn.pixabay.com/1.jpg"],
 )
 @mock.patch(
     "lambdas.youtube.youtube_video_generator.download_image",
@@ -407,8 +425,8 @@ def test_notify_failure_skips_when_topic_arn_not_set(monkeypatch):
 @mock.patch("lambdas.youtube.youtube_video_generator.get_param", return_value="val")
 @mock.patch("lambdas.youtube.youtube_video_generator.praw.Reddit")
 @mock.patch(
-    "lambdas.youtube.youtube_video_generator.build_image_urls",
-    return_value=["https://picsum.photos/seed/1/1280/720"],
+    "lambdas.youtube.youtube_video_generator.fetch_image_urls",
+    return_value=["https://cdn.pixabay.com/1.jpg"],
 )
 @mock.patch(
     "lambdas.youtube.youtube_video_generator.download_image",

@@ -11,7 +11,7 @@ Creates a daily video from Reddit quotes and uploads it to YouTube.
 1. Download OAuth and working files from S3 into /tmp.
 2. Read Reddit credentials from SSM and fetch latest safe post from r/quotes.
 3. Create narration audio with gTTS.
-4. Download seeded images from Picsum.
+4. Search Pixabay for images matching the quote (solid-color fallback if unavailable).
 5. Render MP4 using ffmpeg.
 6. Upload to YouTube and poll processing status until success or failure.
 7. Clean up /tmp artifacts.
@@ -35,7 +35,7 @@ The uploader now verifies:
 
 ## Environment Dependencies
 
-- SSM params: reddit_client_id, reddit_client_secret, reddit_user_agent, reddit_username, reddit_password
+- SSM params: pixabay_api_key, reddit_client_id, reddit_client_secret, reddit_user_agent, reddit_username, reddit_password
 - S3 bucket: youtube-uploader-bucket
 - S3 objects: client_secrets.json, youtube_video_generator.py-oauth2.json
 - OAuth scopes required in youtube_video_generator.py-oauth2.json:
