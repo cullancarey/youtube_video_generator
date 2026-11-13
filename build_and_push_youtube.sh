@@ -9,7 +9,8 @@ ECR_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO"
 
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_URI
 
-docker build -t $REPO -f lambdas/youtube/Dockerfile .
+# Lambda rejects multi-manifest images, so disable provenance/SBOM attestations.
+docker build --platform linux/amd64 --provenance=false --sbom=false -t $REPO -f lambdas/youtube/Dockerfile .
 docker tag $REPO:latest $ECR_URI:$IMAGE_TAG
 docker push $ECR_URI:$IMAGE_TAG
 
